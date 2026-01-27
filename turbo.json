@@ -5,6 +5,10 @@
       "cache": false,
       "dependsOn": ["^dev"]
     },
+    "dev_tests": {
+      "cache": false,
+      "dependsOn": ["^dev_tests"]
+    },
     "build": {
       "dependsOn": ["^build"],
       "outputs": [

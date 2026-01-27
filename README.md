@@ -194,6 +194,34 @@ pnpm build
 pnpm lint
 ```
 
+## Entorno tests (paralelo)
+
+Este repo usa un entorno paralelo aislado del original. Cambios solo de entorno/infra (puertos y envs), sin tocar la app.
+
+Archivos de entorno (web):
+- `apps/web/.env.tests` (tests local con API en 9000)
+- `apps/web/.env.example` (plantilla)
+- `apps/web/.env.production` (valores tests por defecto)
+
+Puertos tests:
+- Web (Next): http://localhost:3100
+- Mobile (Expo): 8083
+- API (backend tests): http://localhost:9000
+
+Comandos tests:
+
+```bash
+# web + mobile (puertos tests)
+pnpm dev_tests
+
+# solo web
+pnpm --filter web dev_tests
+
+# solo mobile
+pnpm --filter mobile dev_tests
+```
+
+
 ---
 
 Este README resume la arquitectura, las pantallas y los gráficos clave de la aplicación para facilitar futuras iteraciones de producto y la integración de backend.
