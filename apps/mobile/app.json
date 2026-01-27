@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "HybridForce Mobile",
+    "slug": "hybridforce-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "hybridforce",
+    "experiments": {
+      "tsconfigPaths": true
+    },
+    "plugins": ["expo-router"],
+    "extra": {}
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@thrifty/ui": ["../../packages/ui/src/index.ts"],
+      "@thrifty/ui/*": ["../../packages/ui/src/*"],
+      "@thrifty/utils": ["../../packages/utils/src/index.ts"],
+      "@thrifty/utils/*": ["../../packages/utils/src/*"],
+      "@thrifty/config": ["../../packages/config/index.ts"]
+    },
+    "jsx": "react-native"
+  },
+  "include": ["**/*.ts", "**/*.tsx", "global.d.ts"],
+  "exclude": ["node_modules"]
+}

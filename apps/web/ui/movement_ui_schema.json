@@ -1,0 +1,17 @@
+{
+  "Run": ["distance_meters", "target_time_seconds"],
+  "Row": ["distance_meters", "target_time_seconds"],
+  "SkiErg": ["distance_meters", "target_time_seconds"],
+  "BikeErg": ["distance_meters", "target_time_seconds"],
+  "AirBike": ["calories", "distance_meters", "target_time_seconds"],
+  "Deadlift": ["reps", "load", "unit"],
+  "Back Squat": ["reps", "load", "unit"],
+  "Front Squat": ["reps", "load", "unit"],
+  "Snatch": ["reps", "load", "unit"],
+  "Clean & Jerk": ["reps", "load", "unit"],
+  "Pull-up": ["reps"],
+  "Toes-to-Bar": ["reps"],
+  "Burpee Box Jump Over": ["reps"],
+  "Wall Ball": ["reps", "load"],
+  "KB Swing": ["reps", "load"]
+}

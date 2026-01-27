@@ -1,0 +1,25 @@
+{
+  "name": "hybrid-force",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": {
+    "turbo": "latest",
+    "typescript": "^5.9.3",
+    "@types/react": "^18.3.27",
+    "@types/react-dom": "^18.3.7"
+  },
+  "engines": {
+    "node": ">=18.x"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

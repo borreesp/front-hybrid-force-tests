@@ -1,0 +1,132 @@
+{
+  "Run": {
+    "base_unit": "meters",
+    "base_value": 400,
+    "base_score": 1.0,
+    "exponent": 0.8,
+    "supports_time": true,
+    "pro_time_seconds": 95,
+    "level_time_factors": { "50": 1.0, "40": 1.1, "30": 1.25, "20": 1.4, "10": 1.6 },
+    "main_muscle": "legs",
+    "capacity_weights": { "resistencia": 0.9, "metcon": 0.4, "fuerza": 0.1 }
+  },
+  "Row": {
+    "base_unit": "meters",
+    "base_value": 500,
+    "base_score": 1.0,
+    "exponent": 0.8,
+    "supports_time": true,
+    "pro_time_seconds": 90,
+    "level_time_factors": { "50": 1.0, "40": 1.1, "30": 1.25, "20": 1.4, "10": 1.6 },
+    "main_muscle": "pull",
+    "capacity_weights": { "resistencia": 0.9, "metcon": 0.4, "fuerza": 0.1 }
+  },
+  "Wall Ball": {
+    "base_unit": "reps",
+    "base_value": 15,
+    "base_score": 1.1,
+    "exponent": 0.9,
+    "supports_time": false,
+    "main_muscle": "legs",
+    "capacity_weights": { "metcon": 0.8, "fuerza": 0.2 }
+  },
+  "Deadlift": {
+    "base_unit": "reps",
+    "base_value": 10,
+    "base_score": 1.2,
+    "exponent": 1.0,
+    "supports_time": false,
+    "main_muscle": "posterior",
+    "capacity_weights": { "fuerza": 0.9, "metcon": 0.2 }
+  },
+  "Burpee Box Jump Over": {
+    "base_unit": "reps",
+    "base_value": 10,
+    "base_score": 1.1,
+    "exponent": 0.95,
+    "supports_time": false,
+    "main_muscle": "full",
+    "capacity_weights": { "metcon": 0.9, "resistencia": 0.4 }
+  },
+  "Kettlebell Lunge": {
+    "base_unit": "reps",
+    "base_value": 20,
+    "base_score": 1.0,
+    "exponent": 0.9,
+    "supports_time": false,
+    "main_muscle": "legs",
+    "capacity_weights": { "resistencia": 0.6, "metcon": 0.6, "fuerza": 0.3 }
+  },
+  "Thruster": {
+    "base_unit": "reps",
+    "base_value": 12,
+    "base_score": 1.1,
+    "exponent": 0.95,
+    "supports_time": false,
+    "main_muscle": "legs",
+    "capacity_weights": { "metcon": 0.8, "fuerza": 0.3 }
+  },
+  "Pull-up": {
+    "base_unit": "reps",
+    "base_value": 10,
+    "base_score": 1.0,
+    "exponent": 0.95,
+    "supports_time": false,
+    "main_muscle": "pull",
+    "capacity_weights": { "gimnasticos": 0.9, "metcon": 0.2 }
+  },
+  "Push-up": {
+    "base_unit": "reps",
+    "base_value": 15,
+    "base_score": 0.9,
+    "exponent": 0.9,
+    "supports_time": false,
+    "main_muscle": "push",
+    "capacity_weights": { "gimnasticos": 0.5, "fuerza": 0.4, "metcon": 0.2 }
+  },
+  "Air Squat": {
+    "base_unit": "reps",
+    "base_value": 25,
+    "base_score": 0.8,
+    "exponent": 0.85,
+    "supports_time": false,
+    "main_muscle": "legs",
+    "capacity_weights": { "resistencia": 0.4, "metcon": 0.3 }
+  },
+  "Box Jump": {
+    "base_unit": "reps",
+    "base_value": 15,
+    "base_score": 0.9,
+    "exponent": 0.9,
+    "supports_time": false,
+    "main_muscle": "legs",
+    "capacity_weights": { "metcon": 0.6, "resistencia": 0.4 }
+  },
+  "Double Under": {
+    "base_unit": "reps",
+    "base_value": 30,
+    "base_score": 0.9,
+    "exponent": 0.9,
+    "supports_time": false,
+    "main_muscle": "full",
+    "capacity_weights": { "metcon": 0.8, "resistencia": 0.4 }
+  },
+  "KB Swing": {
+    "base_unit": "reps",
+    "base_value": 20,
+    "base_score": 1.0,
+    "exponent": 0.9,
+    "supports_time": false,
+    "main_muscle": "posterior",
+    "capacity_weights": { "metcon": 0.7, "fuerza": 0.3 }
+  },
+  "Sit-up": {
+    "base_unit": "reps",
+    "base_value": 25,
+    "base_score": 0.7,
+    "exponent": 0.85,
+    "supports_time": false,
+    "main_muscle": "core",
+    "capacity_weights": { "resistencia": 0.3, "metcon": 0.2 }
+  }
+}

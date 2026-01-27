@@ -1,0 +1,19 @@
+node_modules/
+.env
+
+# Next.js build output
+.next/
+.next-dev/
+.turbo/
+
+# Monorepo / packages build output
+dist/
+build/
+
+# Expo / React Native
+.expo/
+.expo-shared/
+
+# Misc
+*.log
+coverage/

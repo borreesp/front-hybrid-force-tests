@@ -1,0 +1,54 @@
+"use client";
+import { Section } from "@thrifty/ui";
+import React from "react";
+import { HexMetricCard } from "../components/ui/HexMetricCard";
+import { TimelineWeek } from "../components/ui/TimelineWeek";
+import { WorkoutCardAdvanced } from "../components/ui/WorkoutCardAdvanced";
+
+const INITIAL_KPIS = [
+  { value: "5", label: "Sesiones/semana", hint: "+2 vs pasada", tone: "blue" as const },
+  { value: "7.2 h", label: "Carga total", hint: "Objetivo: 8h", tone: "violet" as const },
+  { value: "Challenger", label: "Nivel actual", hint: "72% completado", tone: "green" as const }
+];
+
+const INITIAL_TIMELINE = [
+  { day: "Lun", label: "Engine Builder", status: "done" as const },
+  { day: "Mar", label: "Strength Complex", status: "done" as const },
+  { day: "Mié", label: "Hybrid Sprint", status: "planned" as const },
+  { day: "Jue", label: "Bike tempo", status: "planned" as const },
+  { day: "Vie", label: "Open Gym", status: "rest" as const },
+  { day: "Sáb", label: "Hyrox Race", status: "planned" as const },
+  { day: "Dom", label: "Descanso", status: "rest" as const }
+];
+
+const INITIAL_WORKOUTS = [
+  { title: "Hybrid Sprint", focus: "Mixto · EMOM · 30min", duration: "30 min", level: "Challenger", type: "hybrid" as const },
+  { title: "Engine Builder", focus: "Cardio · Z2 · 45min", duration: "45 min", level: "Base", type: "cardio" as const },
+  { title: "Strength Complex", focus: "Fuerza · 60min", duration: "60 min", level: "Intermedio", type: "strength" as const }
+];
+
+export default function DashboardPage() {
+  return (
+    <div className="space-y-6">
+      <Section title="Dashboard" description="Modo carrera, sesiones y material en un vistazo.">
+        <div className="grid gap-4 md:grid-cols-3">
+          {INITIAL_KPIS.map((kpi) => (
+            <HexMetricCard key={kpi.label} {...kpi} />
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Tu semana" description="Planifica con precisión.">
+        <TimelineWeek items={INITIAL_TIMELINE} />
+      </Section>
+
+      <Section title="Workouts próximos" description="Listos para iniciar.">
+        <div className="grid gap-4 md:grid-cols-3">
+          {INITIAL_WORKOUTS.map((w) => (
+            <WorkoutCardAdvanced key={w.title} {...w} />
+          ))}
+        </div>
+      </Section>
+    </div>
+  );
+}
