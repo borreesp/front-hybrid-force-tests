@@ -5,20 +5,6 @@ export type AthleteProfileMetrics = {
   gymnastics?: number;
   speed?: number;
 
-  fatigue_score?: number;
-
-  acute_load?: number;
-  chronic_load?: number;
-  load_ratio?: number;
-  recovery_time_hours?: number;
-
-  hr_rest?: number;
-  hr_avg?: number;
-  hr_max?: number;
-  hrv?: number;
-  vo2_est?: number;
-  sleep_hours?: number;
-
   skill_row?: number;
   skill_wall_balls?: number;
   skill_kettlebell_lunge?: number;
@@ -38,4 +24,3 @@ export type WorkoutComputedMetrics = {
 export type AthleteImpactDelta = {
   [metricKey: string]: number;
 };
-

@@ -141,7 +141,7 @@ export const WodEditForm: React.FC<Props> = ({
             animate={{ opacity: 1, y: 0 }}
             className="rounded-xl border border-dashed border-white/20 bg-slate-900/40 p-4 text-sm text-slate-300"
           >
-            Sube una imagen para generar bloques o crea uno manualmente.
+            Agrega bloques manualmente para empezar.
           </motion.div>
         )}
       </div>

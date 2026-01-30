@@ -31,14 +31,14 @@ export function useAuth() {
     setAuthLoading(true);
     try {
       const res = await api.me();
-      setUser({ id: String(res.user.id), name: res.user.name, level: "", email: res.user.email });
+      setUser({ id: String(res.user.id), name: res.user.name, level: "", email: res.user.email, role: res.user.role });
       setAuthError(null);
     } catch {
       try {
         const refreshed = await api.refresh();
         if (refreshed?.access_token) {
           const res = await api.me();
-          setUser({ id: String(res.user.id), name: res.user.name, level: "", email: res.user.email });
+          setUser({ id: String(res.user.id), name: res.user.name, level: "", email: res.user.email, role: res.user.role });
           setAuthError(null);
         } else {
           clearAuthState();
@@ -73,7 +73,7 @@ export function useAuth() {
       setAuthLoading(true);
       try {
         const res = await api.login(email, password);
-        setUser({ id: String(res.user.id), name: res.user.name, email: res.user.email, level: "" });
+        setUser({ id: String(res.user.id), name: res.user.name, email: res.user.email, level: "", role: res.user.role });
         setAuthError(null);
         setHydrated(true);
         router.replace("/");
@@ -92,7 +92,7 @@ export function useAuth() {
       setAuthLoading(true);
       try {
         const res = await api.register(name, email, password);
-        setUser({ id: String(res.user.id), name: res.user.name, email: res.user.email, level: "" });
+        setUser({ id: String(res.user.id), name: res.user.name, email: res.user.email, level: "", role: res.user.role });
         setAuthError(null);
         setHydrated(true);
         router.replace("/");

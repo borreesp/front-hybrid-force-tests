@@ -4,30 +4,26 @@ import Link from "next/link";
 import type { Route } from "next";
 import { Button, Card, Metric, Section } from "@thrifty/ui";
 import { api } from "../lib/api";
-import type { AthleteProfileResponse, TrainingLoadDetail, CapacityProfileItem } from "../lib/types";
+import type { AthleteProfileResponse, CapacityProfileItem } from "../lib/types";
 import { useAuth } from "../lib/auth-client";
 import { HelpTooltip } from "../components/ui/HelpTooltip";
 
 const quickActions: { label: string; hint: string; href: Route }[] = [
-  { label: "Analizar WOD", hint: "Carga estimada y fatiga", href: "/wod-analysis" },
-  { label: "Historial", hint: "Tus ultimas sesiones", href: "/workouts" },
+  { label: "Historial", hint: "Tus ultimos tests", href: "/workouts" },
   { label: "Atleta", hint: "Perfil y progreso", href: "/athlete" }
 ];
 
 type QuickMetrics = {
   xp: number;
   sessions7d: number;
-  carga7d: number;
+  testsTotal: number;
   topCapacity?: { name: string; value: number };
-  fatigue?: number | null;
-  recoveryText: string;
 };
 
 export default function DashboardPage() {
   const [data, setData] = useState<AthleteProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [loadDetails, setLoadDetails] = useState<TrainingLoadDetail[]>([]);
   const [capacityProfile, setCapacityProfile] = useState<CapacityProfileItem[]>([]);
   const { user } = useAuth();
 
@@ -39,12 +35,11 @@ export default function DashboardPage() {
         if (!mounted) return;
         setData(profile);
         if (user) {
-          const details = await api.getTrainingLoadDetails(user.id);
-          if (mounted) setLoadDetails(details);
           // fallback de capacidades si el perfil viene sin datos
           if (!profile.capacities?.length) {
+            const isPrivileged = user?.role === "COACH" || user?.role === "ADMIN";
             const userIdNum = Number(user.id);
-            const tryIds = [user.id, userIdNum === 1 ? 2 : undefined].filter(Boolean) as (number | string)[];
+            const tryIds = [user.id, isPrivileged && userIdNum === 1 ? 2 : undefined].filter(Boolean) as (number | string)[];
             for (const candidate of tryIds) {
               try {
                 const res = await api.getCapacityProfile(candidate);
@@ -70,97 +65,23 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const latestLoad = data?.training_load?.[0];
-  const hintCareer = data ? `Actualizado: ${new Date(data.career?.updated_at || new Date()).toLocaleDateString()}` : "Sin datos";
-
-  const loadBars = useMemo(() => {
-    const today = new Date();
-    const source = data?.training_load || [];
-    const detail = loadDetails || [];
-    const byDate = new Map(source.map((d) => [new Date(d.load_date).toDateString(), d]));
-    const executionsByDate = new Map<string, number>();
-    detail.forEach((d) => {
-      if (!d.load_date) return;
-      const key = new Date(d.load_date).toDateString();
-      executionsByDate.set(key, (executionsByDate.get(key) || 0) + 1);
-    });
-
-    const last7 = Array.from({ length: 7 }).map((_, idx) => {
-      const day = new Date(today);
-      day.setDate(today.getDate() - (6 - idx));
-      const key = day.toDateString();
-      const found = byDate.get(key);
-      const execs = executionsByDate.get(key) || ((found?.acute_load ?? 0) > 0 ? 1 : 0);
-      return {
-        load_date: day.toISOString(),
-        acute_load: found?.acute_load ?? 0,
-        chronic_load: found?.chronic_load ?? 0,
-        load_ratio: found?.load_ratio ?? null,
-        label: day.toLocaleDateString(undefined, { weekday: "short" }),
-        execs,
-      };
-    });
-    const maxLoad = Math.max(
-      1,
-      ...last7.map((d) => Number(d.acute_load || 0)),
-      ...last7.map((d) => Number(d.chronic_load || 0))
-    );
-    return last7.map((d, idx) => {
-      const acute = Number(d.acute_load || 0);
-      const chronic = Number(d.chronic_load || 0);
-      const heightBoost = d.execs > 1 ? 10 * (d.execs - 1) : 0;
-      return {
-        key: d.load_date + idx,
-        label: d.label,
-        acute,
-        chronic,
-        acuteHeight: Math.max(6, (acute / maxLoad) * 120 + heightBoost),
-        chronicHeight: Math.max(4, (chronic / maxLoad) * 120 + heightBoost / 2),
-        ratio: d.load_ratio ?? null,
-        execs: d.execs,
-      };
-    });
-  }, [data, loadDetails]);
-
-  const quick: QuickMetrics = useMemo(() => {
+  const hintCareer = data ? `Actualizado: ${new Date(data.career?.updated_at || new Date()).toLocaleDateString()}` : "Sin datos";  const quick: QuickMetrics = useMemo(() => {
     if (!data) {
       return {
         xp: 0,
         sessions7d: 0,
-        carga7d: 0,
-        recoveryText: "A la espera de tus primeras sesiones",
-        fatigue: null
+        testsTotal: 0
       };
     }
 
     const today = new Date();
-    const training = data.training_load || [];
-    const sessionsFromDetails = (loadDetails || []).filter((t) => {
-      if (!t.load_date) return false;
-      const d = new Date(t.load_date);
+    const tests = data.prs ?? [];
+    const sessions7d = tests.filter((t) => {
+      if (!t.achieved_at) return false;
+      const d = new Date(t.achieved_at);
       const diff = (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
       return diff <= 7;
     }).length;
-    // fallback: contar días con carga>0 si no hay detalle
-    const sessionsFromLoad =
-      sessionsFromDetails === 0
-        ? training.filter((t) => {
-            const d = new Date(t.load_date);
-            const diff = (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
-            return diff <= 7 && (t.acute_load ?? 0) > 0;
-          }).length
-        : 0;
-    // como respaldo adicional, usar el recuento de execs en las barras si fuese mayor
-    const execsFromBars = loadBars.reduce((acc, b) => acc + (b.execs || 0), 0);
-    const sessions7d = Math.max(sessionsFromDetails + sessionsFromLoad, execsFromBars);
-    const carga7d =
-      training
-        .filter((t) => {
-          const d = new Date(t.load_date);
-          const diff = (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
-          return diff <= 7;
-        })
-        .reduce((acc, t) => acc + (t.acute_load ?? 0), 0) ?? 0;
 
     const capsSource = data.capacities && data.capacities.length > 0 ? data.capacities : capacityProfile;
     const getCapName = (c: any) => c?.capacity ?? c?.capacity_name ?? c?.capacity_code ?? "Capacidad";
@@ -174,19 +95,13 @@ export default function DashboardPage() {
           }, undefined)
         : undefined;
 
-    const fatigue = data.biometrics?.fatigue_score ?? null;
-    const recoveryText = fatigue != null ? `Fatiga ${fatigue}` : "A la espera de tus primeras sesiones";
-
     return {
       xp: data.career?.xp_total ?? 0,
       sessions7d,
-      carga7d: Math.round(carga7d),
-      topCapacity,
-      fatigue,
-      recoveryText
+      testsTotal: tests.length,
+      topCapacity
     };
-  }, [data, loadDetails, loadBars, capacityProfile]);
-
+  }, [data, capacityProfile]);
   const capacityChart = useMemo(() => {
     const getCapName = (c: any) => c?.capacity ?? c?.capacity_name ?? c?.capacity_code ?? "Capacidad";
     const caps = (data?.capacities?.length ? data.capacities : capacityProfile || []).slice(0, 6);
@@ -209,28 +124,23 @@ export default function DashboardPage() {
       return seg;
     });
     return { segments, radius, circumference };
-  }, [data, capacityProfile]);
-
-  const suggestions = useMemo(() => {
+  }, [data, capacityProfile]);  const suggestions = useMemo(() => {
     const out: { title: string; detail: string; cta: string; accent: string; href?: Route }[] = [];
-    const fatigueScore = data?.biometrics?.fatigue_score ?? quick.fatigue ?? null;
-    const loadRatio = data?.training_load?.[0]?.load_ratio ?? null;
-    const hasHighFatigue = (fatigueScore ?? 0) >= 70 || (loadRatio ?? 0) > 1.2;
 
-    if (hasHighFatigue) {
+    if (quick.sessions7d === 0) {
       out.push({
-        title: "Descanso activo",
-        detail: "Z2 30-40 min + movilidad. Reduce fatiga acumulada.",
-        cta: "Iniciar",
+        title: "Registra tu primer test",
+        detail: "Crea un workout tipo test y guarda tu resultado para empezar a medir progreso.",
+        cta: "Crear test",
         accent: "from-emerald-700/70 to-slate-900/60",
-        href: "/workouts"
+        href: "/workouts/structure"
       });
     }
 
-    if (quick.sessions7d >= 2 && quick.topCapacity) {
+    if (quick.topCapacity) {
       out.push({
-        title: `PR ${quick.topCapacity.name}`,
-        detail: "2 x (10:00) tempo 75% + 2 x 2:00 sprint. Calienta bien y anota marcas.",
+        title: `Enfoca ${quick.topCapacity.name}`,
+        detail: "Disena un test especifico para validar avances en esta capacidad.",
         cta: "Planificar",
         accent: "from-cyan-700/70 to-indigo-700/60",
         href: "/workouts"
@@ -240,15 +150,19 @@ export default function DashboardPage() {
     if (!out.length) {
       out.push({
         title: "Sin recomendaciones",
-        detail: "Registra o analiza un WOD para ver sugerencias personalizadas.",
-        cta: "Analizar WOD",
+        detail: "Registra un WOD para ver sugerencias personalizadas.",
+        cta: "Ver WODs",
         accent: "from-slate-800/60 to-slate-900/30",
-        href: "/wod-analysis"
+        href: "/workouts"
       });
     }
 
     return out;
-  }, [data?.biometrics?.fatigue_score, data?.training_load, quick.fatigue, quick.sessions7d, quick.topCapacity]);
+  }, [quick.sessions7d, quick.topCapacity]);
+
+  const recentTests = useMemo(() => {
+    return (data?.prs ?? []).slice(0, 3);
+  }, [data?.prs]);
 
   return (
     <div className="space-y-8">
@@ -264,8 +178,8 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button variant="primary" href="/wod-analysis">
-              Analizar un WOD
+            <Button variant="primary" href="/workouts/structure">
+              Crear WOD
             </Button>
             <Button variant="ghost" href="/workouts">
               Ver historial
@@ -280,55 +194,47 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="relative">
-            <Metric label="Sesiones semana" value={quick.sessions7d.toString()} hint={quick.sessions7d > 0 ? "Ultimos 7 días" : "Sin datos"} />
+            <Metric label="Tests 7d" value={quick.sessions7d.toString()} hint={quick.sessions7d > 0 ? "Ultimos 7 dias" : "Sin datos"} />
             <div className="absolute right-2 top-2">
               <HelpTooltip helpKey="dashboard.sessionsWeek" />
             </div>
           </div>
           <div className="relative">
-            <Metric label="Carga 7d" value={quick.carga7d.toString()} hint={quick.carga7d > 0 ? "Acumulada" : "Sin datos"} />
+            <Metric label="Tests totales" value={quick.testsTotal.toString()} hint={quick.testsTotal > 0 ? "Acumulados" : "Sin datos"} />
             <div className="absolute right-2 top-2">
-              <HelpTooltip helpKey="dashboard.load7d" />
+              <HelpTooltip helpKey="dashboard.testsTotal" />
             </div>
           </div>
         </div>
       </header>
-
-      <Section title="Estado rapido" description="Energia, fatiga y proximas acciones.">
+      <Section title="Resumen de progreso" description="Actividad reciente y capacidades clave.">
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="bg-slate-900/80 ring-1 ring-emerald-300/30 shadow-lg shadow-emerald-900/30 h-full min-h-[240px]">
-            <div className="grid grid-cols-[auto,1fr] items-center gap-6 h-full">
-              {quick.fatigue != null ? (
-                <div className="flex h-28 w-28 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-300/40">
-                  <div className="relative h-24 w-24">
-                    <svg viewBox="0 0 48 48" className="h-full w-full -rotate-90">
-                      <circle cx="24" cy="24" r="19" stroke="#0f172a" strokeWidth="4" fill="none" />
-                      <circle
-                        cx="24"
-                        cy="24"
-                        r="19"
-                        stroke="#34d399"
-                        strokeWidth="4"
-                        fill="none"
-                        strokeDasharray={`${Math.min(100, quick.fatigue)} 100`}
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <span className="absolute inset-0 flex items-center justify-center text-base font-semibold text-emerald-200">
-                      {Math.round(quick.fatigue)}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex h-28 w-28 items-center justify-center rounded-full bg-slate-800 text-xs text-slate-400">Sin datos</div>
-              )}
-              <div className="self-stretch flex flex-col justify-center">
+            <div className="flex h-full flex-col justify-between gap-4">
+              <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm text-slate-400">Recuperacion</p>
-                  <HelpTooltip helpKey="dashboard.fatigue" />
+                  <p className="text-sm text-slate-400">Actividad reciente</p>
+                  <HelpTooltip helpKey="dashboard.sessionsWeek" />
                 </div>
-                <p className="text-3xl font-semibold text-emerald-300">{quick.fatigue != null ? `${quick.fatigue}` : "Sin datos"}</p>
-                <p className="text-sm text-slate-400">{quick.recoveryText}</p>
+                <p className="text-4xl font-semibold text-emerald-300">{quick.sessions7d}</p>
+                <p className="text-sm text-slate-400">{quick.sessions7d ? "Tests en los ultimos 7 dias" : "Sin tests recientes"}</p>
+              </div>
+              <div className="space-y-2 text-xs text-slate-300">
+                {recentTests.length ? (
+                  recentTests.map((test) => (
+                    <div
+                      key={`${test.movement ?? test.pr_type ?? "test"}-${test.achieved_at ?? ""}`}
+                      className="rounded-lg bg-slate-800/70 px-3 py-2"
+                    >
+                      <p className="text-sm font-semibold text-white">{test.movement ?? test.pr_type ?? "Test"}</p>
+                      <p className="text-xs text-slate-400">
+                        {test.achieved_at ? new Date(test.achieved_at).toLocaleDateString("es-ES") : "-"}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-lg bg-slate-800/60 px-3 py-2 text-slate-400">Sin tests registrados.</div>
+                )}
               </div>
             </div>
           </Card>
@@ -381,58 +287,26 @@ export default function DashboardPage() {
           </Card>
 
           <Card className="bg-slate-900/80 ring-1 ring-indigo-300/30 shadow-lg shadow-indigo-900/30 h-full min-h-[240px]">
-            <div className="flex h-full flex-col">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm text-slate-400">Carga semanal</p>
-                    <HelpTooltip helpKey="dashboard.weeklyLoad" />
-                  </div>
-                  <p className="text-xl font-semibold text-white">
-                    {latestLoad?.acute_load != null ? `${latestLoad.acute_load} aguda` : "Distribución 7d"}
-                  </p>
+            <div className="flex h-full flex-col justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-slate-400">Progreso</p>
+                  <HelpTooltip helpKey="athlete.progress" />
                 </div>
-                {latestLoad?.load_ratio != null && (
-                  <span className="rounded-full bg-indigo-400/20 px-3 py-1 text-xs font-semibold text-indigo-100 ring-1 ring-indigo-300/40">
-                    Ratio {latestLoad.load_ratio}
-                  </span>
-                )}
+                <p className="mt-2 text-xl font-semibold text-white">Nivel {data?.career?.level ?? 0}</p>
+                <p className="text-sm text-slate-400">XP total {Number(quick.xp).toLocaleString("es-ES")}</p>
               </div>
-              <div className="mt-6 flex-1">
-              {loadBars.length > 0 ? (
-                <div className="relative flex h-full items-end gap-4">
-                  <div className="absolute inset-x-0 bottom-8 h-px bg-slate-700/60" />
-                  {loadBars.map((b) => (
-                    <div key={b.key} className="flex flex-col items-center gap-1">
-                      <div className="flex w-9 items-end justify-center gap-1">
-                        <span
-                          className="inline-block w-3 rounded-full bg-indigo-300/80 shadow-lg shadow-indigo-900/30"
-                          style={{ height: `${b.chronicHeight}px` }}
-                          title={`Crónica ${b.chronic}`}
-                        />
-                        <span
-                          className="inline-block w-3 rounded-full bg-cyan-300/80 shadow-lg shadow-cyan-900/30"
-                          style={{ height: `${b.acuteHeight}px` }}
-                          title={`Aguda ${b.acute}${b.execs ? ` | ${b.execs} WODs` : ""}`}
-                        />
-                      </div>
-                      <p className="text-[11px] text-slate-400">
-                        {b.label}
-                        {b.execs > 1 && <span className="ml-1 text-[10px] text-cyan-300">({b.execs})</span>}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-sm text-slate-300">Sin datos registrados.</div>
-              )}
+              <div className="rounded-lg bg-slate-800/70 px-3 py-2 text-sm text-slate-200">
+                <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Capacidad top</p>
+                <p className="mt-1 text-lg font-semibold text-white">
+                  {quick.topCapacity ? `${quick.topCapacity.name} (${quick.topCapacity.value})` : "Sin datos"}
+                </p>
               </div>
             </div>
           </Card>
         </div>
       </Section>
-
-      <Section title="Sugerencias destacadas" description="Acciones concretas segun tu estado.">
+      <Section title="Sugerencias destacadas" description="Acciones concretas segun tu progreso.">
         <div className="grid gap-4 md:grid-cols-2">
           {suggestions.map((s) => (
             <div
@@ -472,3 +346,11 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+

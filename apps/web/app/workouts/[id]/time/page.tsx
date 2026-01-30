@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import type { Route } from "next";
 import { useParams, useRouter } from "next/navigation";
 import { Button, Card, Section } from "@thrifty/ui";
 import { api } from "../../../../lib/api";
 import type { Workout, WorkoutBlock } from "../../../../lib/types";
+import { useAppStore } from "@thrifty/utils";
 
 type Mode = "total" | "by_blocks" | "by_segments";
 type SegmentKind = "BLOCK" | "ROUND" | "SCENARIO" | "INTERVAL";
@@ -27,14 +29,6 @@ type SegmentPlan = {
   label: string;
   note?: string;
   usedAdvanced: boolean;
-};
-
-type SurveyState = {
-  feel: string | null;
-  motivation: string | null;
-  energy: string | null;
-  recovery: string | null;
-  notes: string;
 };
 
 type MovementSegment = {
@@ -332,57 +326,19 @@ const kindLabel = (segment: Segment) => {
   return "Bloque";
 };
 
-function SurveySegment({
-  label,
-  options,
-  value,
-  onChange
-}: {
-  label: string;
-  options: { value: string; label: string }[];
-  value: string | null;
-  onChange: (val: string) => void;
-}) {
-  return (
-    <div>
-      <p className="text-[12px] text-slate-300">{label}</p>
-      <div className="mt-1 flex flex-wrap gap-2">
-        {options.map((opt) => {
-          const active = value === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              aria-label={opt.label}
-              onClick={() => onChange(opt.value)}
-              className={`rounded-xl border px-3 py-2 text-sm transition ${
-                active
-                  ? "border-cyan-400/60 bg-cyan-400/10 text-white"
-                  : "border-white/10 bg-slate-900/50 text-slate-200 hover:border-cyan-300/40"
-              }`}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 export default function WorkoutTimePage() {
   const params = useParams<{ id: string }>();
   const workoutId = params?.id;
   const router = useRouter();
+  const role = useAppStore((s) => s.user?.role ?? "ATHLETE");
+  const basePath = role === "COACH" ? "/coach/workouts" : "/athlete/workouts";
 
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [mode, setMode] = useState<Mode>("total");
   const [totalInput, setTotalInput] = useState("");
   const [segmentInputs, setSegmentInputs] = useState<Record<string, string>>({});
   const [movementInputs, setMovementInputs] = useState<Record<string, string>>({});
-  const [includeTotalOverride, setIncludeTotalOverride] = useState(false);
-  const [survey, setSurvey] = useState<SurveyState>({ feel: null, motivation: null, energy: null, recovery: null, notes: "" });
-  const [loading, setLoading] = useState(true);
+  const [includeTotalOverride, setIncludeTotalOverride] = useState(false);  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -532,14 +488,14 @@ export default function WorkoutTimePage() {
       const payload = { ...payloadBase, total_time_sec: parsed };
       setSaving(true);
       try {
-        console.log("[time-submit][total]", { payload, postWorkoutSurvey: survey });
+        console.log("[time-submit][total]", { payload });
         await api.submitWorkoutTime(workoutId, payload);
         try {
           await api.applyWorkoutImpact(workoutId);
         } catch (impactErr) {
           console.warn("[time] applyImpact fallo", impactErr);
         }
-        router.push(`/workouts/${workoutId}?saved=time`);
+        router.push(`${basePath}/${workoutId}?saved=time` as Route);
       } catch (err) {
         const message = err instanceof Error ? err.message : "No se pudo guardar el tiempo.";
         setError(message);
@@ -598,18 +554,14 @@ export default function WorkoutTimePage() {
 
       setSaving(true);
       try {
-        console.log("[time-submit][by_segments]", {
-          payload,
-          segments: movementSegments,
-          postWorkoutSurvey: survey
-        });
+        console.log("[time-submit][by_segments]", { payload, segments: movementSegments });
         await api.submitWorkoutTime(workoutId, payload);
         try {
           await api.applyWorkoutImpact(workoutId);
         } catch (impactErr) {
           console.warn("[time] applyImpact fallo", impactErr);
         }
-        router.push(`/workouts/${workoutId}?saved=time`);
+        router.push(`${basePath}/${workoutId}?saved=time` as Route);
       } catch (err) {
         const message = err instanceof Error ? err.message : "No se pudo guardar el tiempo por segmentos.";
         setError(message);
@@ -665,14 +617,14 @@ export default function WorkoutTimePage() {
 
     setSaving(true);
     try {
-      console.log("[time-submit][by_blocks]", { payload, postWorkoutSurvey: survey });
+      console.log("[time-submit][by_blocks]", { payload });
       await api.submitWorkoutTime(workoutId, payload);
       try {
         await api.applyWorkoutImpact(workoutId);
       } catch (impactErr) {
         console.warn("[time] applyImpact fallo", impactErr);
       }
-      router.push(`/workouts/${workoutId}?saved=time`);
+      router.push(`${basePath}/${workoutId}?saved=time` as Route);
     } catch (err) {
       const message = err instanceof Error ? err.message : "No se pudo guardar el tiempo por bloques.";
       setError(message);
@@ -879,69 +831,7 @@ export default function WorkoutTimePage() {
                 <p className="text-xs text-slate-400">Tiempo total calculado: {formatSeconds(computedTotal)}</p>
               )}
             </div>
-          )}
-
-                    <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/60 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Encuesta rapida</p>
-                <p className="text-[12px] text-slate-300">Responde en segundos, no bloquea el guardado.</p>
-              </div>
-            </div>
-            <SurveySegment
-              label="Como te has sentido?"
-              value={survey.feel}
-              options={[
-                { value: "very_hard", label: "Muy duro" },
-                { value: "hard", label: "Duro" },
-                { value: "normal", label: "Normal" },
-                { value: "easy", label: "Facil" }
-              ]}
-              onChange={(val) => setSurvey((prev) => ({ ...prev, feel: val }))}
-            />
-            <SurveySegment
-              label="Motivacion"
-              value={survey.motivation}
-              options={[
-                { value: "low", label: "Baja" },
-                { value: "medium", label: "Media" },
-                { value: "high", label: "Alta" }
-              ]}
-              onChange={(val) => setSurvey((prev) => ({ ...prev, motivation: val }))}
-            />
-            <SurveySegment
-              label="Energia"
-              value={survey.energy}
-              options={[
-                { value: "low", label: "Baja" },
-                { value: "medium", label: "Media" },
-                { value: "high", label: "Alta" }
-              ]}
-              onChange={(val) => setSurvey((prev) => ({ ...prev, energy: val }))}
-            />
-            <SurveySegment
-              label="Recuperacion percibida"
-              value={survey.recovery}
-              options={[
-                { value: "bad", label: "Mal" },
-                { value: "ok", label: "Ok" },
-                { value: "great", label: "Muy bien" }
-              ]}
-              onChange={(val) => setSurvey((prev) => ({ ...prev, recovery: val }))}
-            />
-            <label className="block text-xs text-slate-300">
-              Notas (opcional)
-              <textarea
-                maxLength={200}
-                value={survey.notes}
-                onChange={(e) => setSurvey((prev) => ({ ...prev, notes: e.target.value }))}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-white"
-                placeholder="Breves notas o sensaciones..."
-              />
-            </label>
-          </div>
-
-          {error && <p className="mt-3 text-xs text-rose-300">{error}</p>}
+          )}          {error && <p className="mt-3 text-xs text-rose-300">{error}</p>}
           <div className="mt-4 flex justify-end">
             <Button
               variant="primary"
@@ -958,3 +848,4 @@ export default function WorkoutTimePage() {
     </div>
   );
 }
+

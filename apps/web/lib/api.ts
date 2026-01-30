@@ -1,9 +1,6 @@
 import {
   CapacityProfileItem,
-  LookupTables,
   Movement,
-  TrainingLoad,
-  TrainingLoadDetail,
   Workout,
   WorkoutBlock,
   WorkoutStats,
@@ -11,15 +8,13 @@ import {
   RefreshResponse,
   AthleteProfileResponse,
   CareerSnapshot,
-  Achievement,
-  Mission,
-  Benchmark,
   WorkoutAnalysis,
   Equipment,
   WorkoutResult,
   WorkoutResultWithXp,
   WorkoutCreatePayload,
-  ApplyWorkoutImpactResponse
+  ApplyWorkoutImpactResponse,
+  UserRead
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -36,15 +31,6 @@ const buildHeaders = (headers?: HeadersInit) => {
     ...base,
     ...(headers || {})
   };
-};
-
-const buildAuthHeaders = () => {
-  const headers: Record<string, string> = {};
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("access_token");
-    if (token) headers.Authorization = `Bearer ${token}`;
-  }
-  return headers;
 };
 
 async function fetchJson<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -128,41 +114,8 @@ export const api = {
     return fetchJson<WorkoutStats[]>("/workouts/stats");
   },
 
-  async uploadWodOcr(file: File): Promise<{ text: string; confidence: number; mode: string; source?: any }> {
-    const form = new FormData();
-    form.append("file", file);
-    const res = await fetch(`${API_BASE}/wod-analysis/ocr`, {
-      method: "POST",
-      body: form,
-      credentials: "include",
-      headers: {
-        ...buildAuthHeaders()
-      }
-    });
-    if (!res.ok) {
-      const message = await res.text();
-      throw new Error(message || `OCR request failed (${res.status})`);
-    }
-    return res.json();
-  },
-
-  async parseWodDraft(text: string): Promise<any> {
-    return fetchJson(`/wod-analysis/parse`, {
-      method: "POST",
-      body: JSON.stringify({ text })
-    });
-  },
-
   async getMovements(): Promise<Movement[]> {
     return fetchJson<Movement[]>("/movements");
-  },
-
-  async getTrainingLoad(userId: string | number): Promise<TrainingLoad[]> {
-    return fetchJson<TrainingLoad[]>(`/users/${userId}/training-load`);
-  },
-
-  async getTrainingLoadDetails(userId: string | number): Promise<TrainingLoadDetail[]> {
-    return fetchJson<TrainingLoadDetail[]>(`/users/${userId}/training-load/details`);
   },
 
   async getCapacityProfile(userId: string | number): Promise<{
@@ -170,10 +123,6 @@ export const api = {
     capacities: CapacityProfileItem[];
   }> {
     return fetchJson(`/users/${userId}/capacity-profile`);
-  },
-
-  async getLookupTables(): Promise<LookupTables> {
-    return fetchJson<LookupTables>("/lookups");
   },
 
   async getEquipment() {
@@ -186,18 +135,6 @@ export const api = {
 
   async getAthleteCareer(): Promise<CareerSnapshot> {
     return fetchJson<CareerSnapshot>("/athlete/career");
-  },
-
-  async getAthleteAchievements(): Promise<Achievement[]> {
-    return fetchJson<Achievement[]>("/athlete/achievements");
-  },
-
-  async getAthleteMissions(): Promise<Mission[]> {
-    return fetchJson<Mission[]>("/athlete/missions");
-  },
-
-  async getAthleteBenchmarks(): Promise<Benchmark[]> {
-    return fetchJson<Benchmark[]>("/athlete/benchmarks");
   },
 
   async getWorkoutAnalysis(id: string | number): Promise<WorkoutAnalysis> {
@@ -277,10 +214,6 @@ export const api = {
     });
   },
 
-  async getAthleteSkillsTop(athleteId: string | number, limit = 5) {
-    return fetchJson(`/athlete/${athleteId}/skills/top?limit=${limit}`);
-  },
-
   async getAthleteSkills(athleteId: string | number) {
     return fetchJson(`/athlete/${athleteId}/skills`);
   },
@@ -295,5 +228,13 @@ export const api = {
 
   async getAthleteStatsOverview(athleteId: string | number) {
     return fetchJson(`/athlete/${athleteId}/stats/overview`);
+  },
+
+  async getUsers(): Promise<UserRead[]> {
+    return fetchJson<UserRead[]>("/users");
+  },
+
+  async getUser(userId: string | number): Promise<UserRead> {
+    return fetchJson<UserRead>(`/users/${userId}`);
   }
 };

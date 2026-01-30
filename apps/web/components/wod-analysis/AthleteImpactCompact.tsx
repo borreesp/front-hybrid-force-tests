@@ -12,8 +12,6 @@ type Props = {
 };
 
 const labels: Record<string, string> = {
-  fatigue: "Fatiga actual",
-  fatigue_score: "Fatiga actual",
   resistencia: "Resistencia",
   resistance: "Resistencia",
   endurance: "Resistencia",
@@ -27,19 +25,8 @@ const labels: Record<string, string> = {
   leg_load: "Carga piernas",
   core: "Core",
   wb_skill: "WallBall skill",
-  wallball_skill: "WallBall skill",
-  hr_rest: "FC reposo",
-  hr_avg: "FC media",
-  hr_max: "FC maxima",
-  vo2_est: "VO2 estimado",
-  hrv: "HRV",
-  sleep_hours: "Horas sueno",
-  recovery_time_hours: "Recuperacion",
-  acute_load: "Carga aguda",
-  chronic_load: "Carga cronica",
-  load_ratio: "Load ratio"
+  wallball_skill: "WallBall skill"
 };
-
 const alias: Record<string, string> = {
   resistencia: "resistencia",
   resistance: "resistencia",
@@ -61,23 +48,8 @@ const alias: Record<string, string> = {
   wall_ball_skill: "wallball_skill",
   skill_wall_ball: "wallball_skill",
   skill_wallball: "wallball_skill",
-  skill_wb: "wallball_skill",
-  fatigue_score: "fatigue",
-  fatigue: "fatigue",
-  fatiga: "fatigue",
-  hr_rest: "hr_rest",
-  hr_avg: "hr_avg",
-  hr_max: "hr_max",
-  vo2_est: "vo2_est",
-  vo2: "vo2_est",
-  hrv: "hrv",
-  sleep_hours: "sleep_hours",
-  recovery_time_hours: "recovery_time_hours",
-  acute_load: "acute_load",
-  chronic_load: "chronic_load",
-  load_ratio: "load_ratio"
+  skill_wb: "wallball_skill"
 };
-
 const normalizeKey = (raw: string) => {
   const base = raw
     .toLowerCase()
@@ -107,15 +79,11 @@ const priorityOrder = [
   "fuerza",
   "metcon",
   "gimnasticos",
-  "fatigue",
-  "fatigue_score",
+  "velocidad",
   "carga_muscular",
-  "hr_rest",
-  "vo2_est",
-  "acute_load",
-  "load_ratio"
+  "core",
+  "wallball_skill"
 ];
-
 export const AthleteImpactCompact: React.FC<Props> = ({ athleteProfile, athleteImpact, mode }) => {
   const normalizedImpact = useMemo(() => {
     const entries = Object.entries(athleteImpact ?? {}).map(([key, value]) => {
@@ -192,3 +160,4 @@ export const AthleteImpactCompact: React.FC<Props> = ({ athleteProfile, athleteI
     </div>
   );
 };
+

@@ -1,47 +1,32 @@
 ﻿"use client";
 import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AthleteHeader } from "../../components/athlete/AthleteHeader";
 import { AthleteRadar } from "../../components/athlete/AthleteRadar";
 import { ProgressTimeline } from "../../components/athlete/ProgressTimeline";
 import { MetricsPRs } from "../../components/athlete/MetricsPRs";
-import { EquipmentSkills } from "../../components/athlete/EquipmentSkills";
-import { FatigueStatus } from "../../components/athlete/FatigueStatus";
-import { AchievementGrid } from "../../components/athlete/AchievementGrid";
-import { MissionBoard } from "../../components/athlete/MissionBoard";
-import { BenchmarkSummary } from "../../components/athlete/BenchmarkSummary";
 import { useAthleteProfile } from "../../hooks/useAthlete";
 import { api } from "../../lib/api";
-import type { AthletePrStat, AthleteSkillStat, CapacityProfileItem, Equipment } from "../../lib/types";
+import type { AthletePrStat, CapacityProfileItem } from "../../lib/types";
 import { useAppStore } from "@thrifty/utils";
 import { HelpTooltip } from "../../components/ui/HelpTooltip";
 import { normalizeCapacity, type ComparisonMode, type CapacityKey } from "../../lib/capacityNormalization";
 
 export default function AthletePage() {
-  const router = useRouter();
   const { data, loading, error } = useAthleteProfile();
-  const [equipment, setEquipment] = useState<Equipment[]>([]);
-  const [topSkills, setTopSkills] = useState<AthleteSkillStat[]>([]);
   const [topPrs, setTopPrs] = useState<AthletePrStat[]>([]);
   const [capacityProfile, setCapacityProfile] = useState<CapacityProfileItem[]>([]);
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>("level");
   const user = useAppStore((s) => s.user);
 
   useEffect(() => {
-    api.getEquipment().then(setEquipment).catch(() => setEquipment([]));
-  }, []);
-
-  useEffect(() => {
     if (!user?.id) return;
-    api.getAthleteSkillsTop(user.id, 5)
-      .then((res) => setTopSkills(res as AthleteSkillStat[]))
-      .catch(() => setTopSkills([]));
     api.getAthletePrsTop(user.id, 5)
       .then((res) => setTopPrs(res as AthletePrStat[]))
       .catch(() => setTopPrs([]));
     if (!data?.capacities?.length) {
+      const isPrivileged = user?.role === "COACH" || user?.role === "ADMIN";
       const userIdNum = Number(user.id);
-      const tryIds = [user.id, userIdNum === 1 ? 2 : undefined].filter(Boolean) as (number | string)[];
+      const tryIds = [user.id, isPrivileged && userIdNum === 1 ? 2 : undefined].filter(Boolean) as (number | string)[];
       (async () => {
         for (const candidate of tryIds) {
           try {
@@ -59,17 +44,9 @@ export default function AthletePage() {
     }
   }, [user?.id, data?.capacities?.length]);
 
-  const latestLoad = data?.training_load?.[0];
-  const loadRatio = latestLoad?.load_ratio ?? null;
-  const statusLabel: "verde" | "amarillo" | "rojo" =
-    loadRatio && loadRatio > 1.2 ? "rojo" : loadRatio && loadRatio > 1.0 ? "amarillo" : "verde";
-  const statusMessage = loadRatio
-    ? statusLabel === "rojo"
-      ? "Riesgo de fatiga, reduce intensidad"
-      : statusLabel === "amarillo"
-        ? "Carga media, escucha sensaciones"
-        : "Carga equilibrada, ideal para tecnica ligera"
-    : "Sin datos de carga";
+  const hasResults = (data?.prs?.length ?? 0) > 0;
+  const statusLabel: "verde" | "amarillo" | "rojo" = hasResults ? "verde" : "amarillo";
+  const statusMessage = hasResults ? "Progreso activo" : "Sin tests registrados aun";
 
   const athleteLevel = data?.career?.level ?? 1;
 
@@ -104,17 +81,17 @@ export default function AthletePage() {
     comparisonMode === "level" ? "tu nivel" : comparisonMode === "global" ? "nivel élite" : "el siguiente nivel";
 
   const metrics = useMemo(() => {
-    const bio = data?.biometrics;
+    const xpTotal = data?.career?.xp_total ?? 0;
+    const level = data?.career?.level ?? 0;
+    const weeklyStreak = data?.career?.weekly_streak ?? null;
+    const prsCount = data?.prs?.length ?? 0;
     return [
-      { label: "FC reposo", value: bio?.hr_rest ? `${bio.hr_rest} bpm` : "-", hint: bio?.hr_avg ? `media ${bio.hr_avg} bpm` : undefined },
-      { label: "VO2 est.", value: bio?.vo2_est ? `${bio.vo2_est} ml/kg/min` : "-", hint: bio?.hrv ? `HRV ${bio.hrv}` : undefined },
-      {
-        label: "Recuperacion",
-        value: bio?.recovery_time_hours ? `${bio.recovery_time_hours} h` : "-",
-        hint: latestLoad?.acute_load ? `Carga: ${latestLoad.acute_load}` : undefined
-      }
+      { label: "XP total", value: Number(xpTotal).toLocaleString("es-ES") },
+      { label: "Nivel", value: level ? `${level}` : "-" },
+      { label: "Tests registrados", value: `${prsCount}` },
+      { label: "Racha semanal", value: weeklyStreak != null ? `${weeklyStreak}` : "-" }
     ];
-  }, [data?.biometrics, latestLoad?.acute_load]);
+  }, [data?.career, data?.prs?.length]);
 
   const prs = useMemo(() => {
     const source = topPrs.length ? topPrs : data?.prs ?? [];
@@ -125,29 +102,15 @@ export default function AthletePage() {
     }));
   }, [data?.prs, topPrs]);
 
-  const skills = useMemo(() => {
-    const source: (AthleteSkillStat | any)[] = topSkills.length ? topSkills : (data?.skills ?? []);
-    if (!source.length) return [];
-    const maxVal = Math.max(...source.map((s) => Number((s as any).value ?? (s as any).score ?? 0)));
-    const humanUnit = (u?: string | null) => {
-      if (!u) return "pts";
-      if (u === "total_kg") return "kg";
-      if (u === "total_reps") return "reps";
-      if (u === "total_meters") return "m";
-      if (u === "total_cals") return "cals";
-      if (u === "total_seconds") return "s";
-      return u;
-    };
-    return source.slice(0, 5).map((s) => {
-      const value = Number((s as any).value ?? (s as any).score ?? 0);
-      const unit = humanUnit((s as any).unit);
-      return {
-        name: (s as any).name ?? (s as any).movement,
-        valueLabel: `${value.toFixed(0)} ${unit ?? ""}`.trim(),
-        progress: maxVal ? Math.round((value / maxVal) * 100) : undefined
-      };
-    });
-  }, [data?.skills, topSkills]);
+  const allPrs = useMemo(() => {
+    return (data?.prs ?? []).map((pr) => ({
+      name: pr.movement ?? pr.pr_type ?? "PR",
+      value: pr.value ?? 0,
+      unit: pr.unit ?? undefined,
+      type: pr.pr_type ?? undefined,
+      date: pr.achieved_at ?? null
+    }));
+  }, [data?.prs]);
 
   const headerName = user?.name || "Atleta";
   const levelLabel = data?.career ? `Nivel ${data.career.level}` : "Nivel 0";
@@ -157,26 +120,16 @@ export default function AthletePage() {
     : 0;
 
   const timelineItems = useMemo(() => {
-    if (!data?.achievements.length) {
-      return [
-        { title: "Sin logros aun", date: "Hoy", type: "Carrera", delta: "+0 XP" }
-      ];
+    if (!data?.prs?.length) {
+      return [{ title: "Sin tests aun", date: "Hoy", type: "Test", delta: "+0 XP" }];
     }
-    return data.achievements.slice(-3).map((achievement) => ({
-      title: achievement.name,
-      date: achievement.unlocked_at ? new Date(achievement.unlocked_at).toLocaleDateString("es-ES") : "Hoy",
-      type: achievement.category ?? "Logro",
-      delta: achievement.xp_reward ? `+${achievement.xp_reward.toFixed(0)} XP` : undefined
+    return data.prs.slice(-4).map((pr) => ({
+      title: pr.movement ?? pr.pr_type ?? "Test",
+      date: pr.achieved_at ? new Date(pr.achieved_at).toLocaleDateString("es-ES") : "Hoy",
+      type: pr.pr_type ?? "PR",
+      delta: pr.value ? `${pr.value}${pr.unit ? ` ${pr.unit}` : ""}` : undefined
     }));
-  }, [data?.achievements]);
-
-  const gear = useMemo((): { name: string; status?: string }[] => {
-    if (!equipment.length) return [];
-    return equipment.slice(0, 4).map((eq) => ({
-      name: eq.name,
-      status: eq.category ?? undefined
-    }));
-  }, [equipment]);
+  }, [data?.prs]);
 
   return (
     <div className="space-y-8">
@@ -209,47 +162,20 @@ export default function AthletePage() {
             </label>
           </div>
           <AthleteRadar entries={radarEntries} caption={data ? `Comparado con ${modeLabel}` : "Esperando datos"} modeLabel={modeLabel} />
-          <FatigueStatus
-            status={statusLabel}
-            message={statusMessage}
-            metrics={[
-              { label: "Carga 7d", value: latestLoad?.acute_load ? `${latestLoad.acute_load}` : "-" },
-              { label: "Fatiga", value: statusLabel === "rojo" ? "Alta" : statusLabel === "amarillo" ? "Media" : "Baja" },
-              { label: "Ratio", value: loadRatio ? loadRatio.toFixed(2) : "-" }
-            ]}
-          />
         </div>
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm text-slate-300">
-            <span>Progreso y logros</span>
+            <span>Tests recientes</span>
             <HelpTooltip helpKey="athlete.progress" />
           </div>
           <ProgressTimeline items={timelineItems} />
-          <BenchmarkSummary benchmarks={data?.benchmarks ?? []} />
         </div>
       </div>
 
       <MetricsPRs
         metrics={metrics}
         prs={prs}
-        onViewMorePrs={() => {
-          if (user?.id) router.push(`/athlete/${user.id}/stats?tab=prs`);
-        }}
-      />
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-4">
-          <AchievementGrid achievements={data?.achievements ?? []} />
-        </div>
-        <MissionBoard missions={data?.missions ?? []} />
-      </div>
-
-      <EquipmentSkills
-        gear={gear}
-        skills={skills.length ? skills : []}
-        onViewMoreSkills={() => {
-          if (user?.id) router.push(`/athlete/${user.id}/stats?tab=skills`);
-        }}
+        allPrs={allPrs}
       />
 
       {loading && <p className="text-sm text-slate-400">Cargando datos del atleta...</p>}

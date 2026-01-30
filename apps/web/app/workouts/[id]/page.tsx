@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import type { Route } from "next";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { WorkoutDetailLayout } from "../../../components/workout/WorkoutDetailLayout";
 import { api } from "../../../lib/api";
@@ -11,6 +12,7 @@ import type {
   WorkoutAnalysis,
   WorkoutResult
 } from "../../../lib/types";
+import { useAppStore } from "@thrifty/utils";
 
 type LoadState<T> = { data: T | null; loading: boolean; error?: string | null };
 
@@ -28,6 +30,10 @@ export default function WorkoutDetailPage() {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [athleteProfile, setAthleteProfile] = useState<AthleteProfileResponse | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const role = useAppStore((s) => s.user?.role ?? "ATHLETE");
+  const effectiveRole = role === "ADMIN" ? "COACH" : role;
+  const basePath = effectiveRole === "COACH" ? "/coach/workouts" : "/athlete/workouts";
+  const editBasePath = effectiveRole === "COACH" ? "/coach/workouts/new" : null;
 
   useEffect(() => {
     if (!workoutId) return;
@@ -89,11 +95,23 @@ export default function WorkoutDetailPage() {
       results={resultsState.data ?? []}
       versions={versionsState.data ?? []}
       similarWorkouts={similarState.data ?? []}
-      applyHref={workoutId ? `/workouts/${workoutId}/time` : undefined}
-      onApplyTraining={workoutId ? () => router.push(`/workouts/${workoutId}/time`) : undefined}
+      applyHref={effectiveRole === "ATHLETE" && workoutId ? `${basePath}/${workoutId}/time` : undefined}
+      onApplyTraining={
+        effectiveRole === "ATHLETE" && workoutId ? () => router.push(`${basePath}/${workoutId}/time` as Route) : undefined
+      }
       applyMessage={applyMessage}
-      editHref={workoutId ? `/workouts/structure?editWorkoutId=${workoutId}` : undefined}
-      onEditWorkout={workoutId ? () => router.push(`/workouts/structure?editWorkoutId=${workoutId}`) : undefined}
+      editHref={
+        workoutId && effectiveRole === "COACH"
+          ? `/coach/workouts/new?editWorkoutId=${workoutId}`
+          : undefined
+      }
+      onEditWorkout={
+        workoutId && effectiveRole === "COACH"
+          ? () => router.push(`/coach/workouts/new?editWorkoutId=${workoutId}` as Route)
+        : undefined
+      }
+      workoutBasePath={basePath}
+      editBasePath={editBasePath}
     />
   );
 }

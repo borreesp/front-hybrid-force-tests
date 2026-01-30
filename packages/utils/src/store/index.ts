@@ -6,6 +6,7 @@ type UserProfile = {
   level: string;
   avatar?: string;
   email?: string;
+  role?: "ATHLETE" | "COACH" | "ADMIN";
 };
 
 type WorkoutSummary = {

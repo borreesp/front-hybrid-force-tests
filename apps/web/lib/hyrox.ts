@@ -124,7 +124,7 @@ export const calculateHyroxTransfer = (workout: HyroxInput): HyroxTransferResult
   if (hasBurpeeBroad) explanation.push("Incluye Burpees Broad Jump");
   if (hasRow) explanation.push("Incluye Row");
   if (hasSki) explanation.push("Incluye SkiErg");
-  if (hasWallBall) explanation.push("Incluye Wall Balls (fatiga global)");
+  if (hasWallBall) explanation.push("Incluye Wall Balls (demanda global)");
   if (hasSledPush || hasSledPull) explanation.push(`Incluye Sled ${hasSledPush ? "Push" : ""}${hasSledPush && hasSledPull ? " y " : ""}${hasSledPull ? "Pull" : ""}`);
   explanation.push(`Volumen: +${volumeScore.toFixed(1)} por densidad`);
   explanation.push(`Work/Rest: ratio ${ratio.toFixed(2)} (${ratioAdj >= 0 ? "+" : ""}${ratioAdj})`);
@@ -136,3 +136,4 @@ export const calculateHyroxTransfer = (workout: HyroxInput): HyroxTransferResult
     explanation
   };
 };
+

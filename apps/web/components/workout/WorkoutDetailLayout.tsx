@@ -1,4 +1,4 @@
-﻿
+
 "use client";
 import React, { useEffect, useMemo } from "react";
 import { Button, Card, Section } from "@thrifty/ui";
@@ -42,6 +42,8 @@ type Props = {
   applyMessage?: string | null;
   editHref?: string;
   onEditWorkout?: () => void;
+  workoutBasePath?: string;
+  editBasePath?: string | null;
 };
 
 const panelCard =
@@ -91,10 +93,6 @@ function movementMetrics(movement: WorkoutBlockMovement) {
 const buildFallbackImpact = (workout: Workout | null, analysis: WorkoutAnalysis | null): ImpactMap => {
   if (!workout && !analysis) return {};
   const impact: ImpactMap = {};
-  const fatigueScore = analysis?.fatigue_score ?? (workout as any)?.fatigue_score;
-  if (fatigueScore !== undefined && fatigueScore !== null) {
-    impact.fatigue = Math.round(Number(fatigueScore));
-  }
 
   const domain = (workout?.domain || "").toLowerCase();
   if (domain.includes("mixto") || domain.includes("largo")) impact.resistance = 1;
@@ -142,25 +140,6 @@ const buildAthleteProfileMetrics = (profile?: AthleteProfileResponse | null) => 
 
   (profile.capacities ?? []).forEach((cap) => pushMetric(cap.capacity, cap.value));
 
-  const bio = profile.biometrics;
-  if (bio) {
-    pushMetric("hr_rest", bio.hr_rest);
-    pushMetric("hr_avg", bio.hr_avg);
-    pushMetric("hr_max", bio.hr_max);
-    pushMetric("vo2_est", bio.vo2_est);
-    pushMetric("hrv", bio.hrv);
-    pushMetric("sleep_hours", bio.sleep_hours);
-    pushMetric("fatigue_score", bio.fatigue_score);
-    pushMetric("recovery_time_hours", bio.recovery_time_hours);
-  }
-
-  const load = profile.training_load?.[0];
-  if (load) {
-    pushMetric("acute_load", load.acute_load);
-    pushMetric("chronic_load", load.chronic_load);
-    pushMetric("load_ratio", load.load_ratio);
-  }
-
   (profile.skills ?? []).forEach((skill, index) => {
     const key = skill.movement ? `skill_${slugify(skill.movement)}` : `skill_${index}`;
     pushMetric(key, skill.score);
@@ -186,6 +165,8 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
   applyMessage,
   editHref,
   onEditWorkout,
+  workoutBasePath,
+  editBasePath,
   versions = []
 }) => {
   const levelTimes = useMemo(() => workout?.level_times ?? [], [workout]);
@@ -320,9 +301,6 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
     if (!workout) return;
     recordMetrics("workoutDetail", "athleteProfile", athleteProfileMetrics, [
       ...expectedMetricKeys.capacities,
-      ...expectedMetricKeys.biometrics,
-      ...expectedMetricKeys.load,
-      ...expectedMetricKeys.state,
       ...expectedMetricKeys.skills
     ]);
     recordMetrics("workoutDetail", "workoutMetadata", adaptWorkoutComputedMetrics(workout as any), [
@@ -338,8 +316,8 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
     recordMetrics("workoutDetail", "athleteImpact", adaptAthleteImpact(impactData as any));
   }, [athleteProfileMetrics, impactData, workout]);
 
-  const workoutFatigueScore = analysis?.fatigue_score ?? (workout as any)?.fatigue_score;
-  const fatigueValue = mode === "analysis" ? workoutFatigueScore : workout?.estimated_difficulty;
+  const workoutDifficultyScore = analysis?.difficulty_score ?? workout?.estimated_difficulty;
+  const difficultyValue = mode === "analysis" ? workoutDifficultyScore : workout?.estimated_difficulty;
   const capacityFocus = mode === "analysis" ? analysis?.capacity_focus ?? [] : [];
   const capacityPreview = capacityFocus.length
     ? capacityFocus
@@ -416,16 +394,7 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
               {analysis?.pacing?.tip && <span className="rounded-full bg-white/5 px-3 py-1">Pacing: {analysis.pacing.tip}</span>}
             </div>
             <div className="flex flex-wrap gap-3">
-              {mode === "analysis" ? (
-                <Button variant="primary" href="/wod-analysis">
-                  Nuevo analisis
-                </Button>
-              ) : (
-                <Button variant="primary" href={`/wod-analysis?workoutId=${workout.id}`}>
-                  Nuevo analisis
-                </Button>
-              )}
-              <Button variant="ghost" href="/workouts">
+              <Button variant="ghost" href={workoutBasePath ?? "/workouts"}>
                 Ver WODs
               </Button>
               {editButton}
@@ -435,12 +404,12 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
           </div>
           <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-[420px]">
             <Card className={statCard}>
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-400">{mode === "analysis" ? "Fatiga real" : "Dificultad estimada"}</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-400">{mode === "analysis" ? "Dificultad real" : "Dificultad estimada"}</p>
               <div className="mt-3 flex items-end justify-between">
-                <span className="text-4xl font-semibold text-white">{fatigueValue ?? "-"}</span>
+                <span className="text-4xl font-semibold text-white">{difficultyValue ?? "-"}</span>
                 <span className="text-xs text-slate-400">Valoraciones {workout.rating_count ?? 0}</span>
               </div>
-              <LinearProgressBar value={((fatigueValue ?? 0) / 10) * 100} color="#22d3ee" />
+              <LinearProgressBar value={((difficultyValue ?? 0) / 10) * 100} color="#22d3ee" />
               <p className="text-[11px] text-slate-400">
                 Transferencia HYROX: {hyroxTransfer ? `${hyroxTransfer.transferScore}/100` : "-"}
               </p>
@@ -454,28 +423,32 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
               {workout.avg_time_seconds && <p className="text-[11px] text-slate-500">Media global: {formatSeconds(workout.avg_time_seconds)}</p>}
             </Card>
             <Card className={statCard}>
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Estado de sesion</p>
-              <p className="mt-3 text-lg font-semibold text-white">{workout.session_load ?? "N/A"}</p>
-              <p className="text-xs text-slate-400">Sensacion: {workout.session_feel ?? "-"}</p>
-              {completionCount > 0 && mode === "workout" && (
-                <p className="mt-2 rounded-xl bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
-                  Completado {completionCount}x por ti{bestUserTime ? ` ú mejor ${formatSeconds(bestUserTime)}` : ""}
-                </p>
-              )}
-            </Card>
+  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Resultados personales</p>
+  <p className="mt-3 text-lg font-semibold text-white">
+    {completionCount > 0 ? `${completionCount} registros` : "Sin resultados"}
+  </p>
+  <p className="text-xs text-slate-400">
+    {bestUserTime ? `Mejor tiempo ${formatSeconds(bestUserTime)}` : "Registra tu primer intento"}
+  </p>
+  {completionCount > 0 && mode === "workout" && (
+    <p className="mt-2 rounded-xl bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+      Completado {completionCount}x por ti{bestUserTime ? ` · mejor ${formatSeconds(bestUserTime)}` : ""}
+    </p>
+  )}
+</Card>
           </div>
         </div>
       </section>
 
       <Section
         title="Claves del WOD"
-        description="Fatiga, capacidades foco y pacing recomendado con el mismo layout en ambos modos."
+        description="Dificultad, capacidades foco y pacing recomendado con el mismo layout en ambos modos."
         className={sectionShell}
       >
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className={panelCard}>
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">{mode === "analysis" ? "Fatiga real" : "Fatiga estimada"}</p>
-            <p className="mt-2 text-3xl font-semibold text-white">{fatigueValue ?? "-"}</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">{mode === "analysis" ? "Dificultad real" : "Dificultad estimada"}</p>
+            <p className="mt-2 text-3xl font-semibold text-white">{difficultyValue ?? "-"}</p>
             <p className="text-xs text-slate-500">
               HYROX transfer: {hyroxTransfer ? `${hyroxTransfer.transferScore}/100` : "-"}
             </p>
@@ -496,17 +469,16 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
           <Card className={panelCard}>
             <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Pacing recomendado</p>
             <p className="mt-2 text-sm text-white">{pacingCopy?.tip ?? "Mantener ritmo estable, controlando work/rest indicado."}</p>
-            <p className="text-xs text-slate-400">{pacingCopy?.range ?? workout.pacing_detail ?? ""}</p>
-            <p className="mt-3 text-xs text-slate-500">{analysis?.expected_feel ?? "Ajusta segun sensaciones."}</p>
-          </Card>
-        </div>
+            <p className="text-xs text-slate-400">{pacingCopy?.range ?? workout.pacing_detail ?? ""}</p>
+            </Card>
+          </div>
       </Section>
 
       <AthleteImpact athleteProfile={athleteProfileMetrics} athleteImpact={impactData} mode={mode} />
 
       <Section
         title="Detalles clave"
-        description="Dominio, intensidad y carga real del WOD, sin datos mock."
+        description="Dominio, intensidad y volumen del WOD, sin datos mock."
         className={sectionShell}
       >
         <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
@@ -533,14 +505,9 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
           <Card className={panelCard}>
             <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Duracion / volumen</p>
             <p className="mt-2 text-xl font-semibold text-white">{workout.volume_total ?? "-"}</p>
-            <p className="text-[11px] text-slate-500">Avg time: {formatSeconds(workout.avg_time_seconds)}</p>
-          </Card>
-          <Card className={panelCard}>
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Carga del dia</p>
-            <p className="mt-2 text-xl font-semibold text-white">{workout.session_load ?? "-"}</p>
-            <p className="text-[11px] text-slate-500">Feel: {workout.session_feel ?? "-"}</p>
-          </Card>
-        </div>
+            <p className="text-[11px] text-slate-500">Avg time: {formatSeconds(workout.avg_time_seconds)}</p>
+            </Card>
+          </div>
       </Section>
 
       <Section
@@ -564,14 +531,14 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
             <p className="text-xs uppercase tracking-[0.18em] text-slate-400">RX, scaled y AI</p>
             <p className="mt-2 text-sm text-slate-200">RX: {workout.rx_variant ?? "-"}</p>
             <p className="mt-2 text-sm text-slate-200">Scaled: {workout.scaled_variant ?? "-"}</p>
-            <p className="mt-3 text-[12px] text-slate-400">AI: {workout.ai_observation ?? "Sin nota AI"}</p>
-          </Card>
-        </div>
+            <p className="mt-3 text-[12px] text-slate-400">AI: {workout.ai_observation ?? "Sin nota AI"}</p>
+            </Card>
+          </div>
         {analysis && (
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
             <Card className={panelCard}>
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Fatiga y transfer</p>
-              <p className="mt-2 text-3xl font-semibold text-white">{analysis.fatigue_score.toFixed(1)}</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Dificultad y transfer</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{analysis.difficulty_score.toFixed(1)}</p>
               <p className="text-xs text-slate-400">Transfer HYROX {analysis.hyrox_transfer.toFixed(1)}%</p>
             </Card>
             <Card className={panelCard}>
@@ -589,9 +556,8 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
             <Card className={panelCard}>
               <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Pacing recomendado</p>
               <p className="mt-2 text-sm text-white">{analysis.pacing.tip}</p>
-              <p className="text-xs text-slate-400">{analysis.pacing.range}</p>
-              <p className="mt-3 text-xs text-slate-500">{analysis.expected_feel}</p>
-            </Card>
+              <p className="text-xs text-slate-400">{analysis.pacing.range}</p>
+            </Card>
           </div>
         )}
       </Section>
@@ -776,9 +742,9 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
             <p className="mt-2 text-3xl font-semibold text-white">
               {mode === "analysis" ? analysis?.pacing?.range ?? estimatedForUser?.time_range ?? "-" : estimatedForUser ? estimatedForUser.time_range : "-"}
             </p>
-            <p className="text-xs text-slate-500">Comparado con niveles cargados</p>
-          </Card>
-        </div>
+            <p className="text-xs text-slate-500">Comparado con niveles cargados</p>
+            </Card>
+          </div>
         <div className="mt-6 grid gap-4 lg:grid-cols-5">
           <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-gradient-to-br from-slate-950/70 via-slate-950/50 to-slate-900/50 p-3 shadow-[0_10px_30px_rgba(0,0,0,0.45)]">
             <BarLevelChart data={levelChartData} color="#22d3ee" />
@@ -804,7 +770,7 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
             </table>
           </div>
         </div>
-      </Section>
+      </Section>
       {showComparative && (
         <Section
           title="Comparativa personal"
@@ -841,10 +807,9 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
                 </Card>
                 <Card className={panelCard}>
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Pacing sugerido</p>
-                  <p className="mt-2 text-sm text-white">{analysis?.pacing?.tip ?? "Mantener ritmo estable, controlando work/rest indicado."}</p>
-                  <p className="text-xs text-slate-500">{analysis?.expected_feel ?? "Ajusta segun sensaciones."}</p>
-                </Card>
-              </div>
+                  <p className="mt-2 text-sm text-white">{analysis?.pacing?.tip ?? "Mantener ritmo estable, controlando work/rest indicado."}</p>
+            </Card>
+          </div>
               <div className="grid gap-4 lg:grid-cols-2">
                 <Card className={panelCard}>
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Radar de capacidades del WOD</p>
@@ -922,8 +887,8 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
                 {lastUserResult
                   ? `Ultimo intento: ${formatSeconds(lastUserResult.time_seconds)} (diff ${lastUserResult.difficulty ?? "-"})`
                   : "Registra tu primer intento para comparar pacing y HR en futuras iteraciones."}
-              </p>
-            </Card>
+              </p>
+            </Card>
           </div>
         </Section>
       )}
@@ -971,12 +936,14 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
                   <div className="flex items-center gap-2">
                     <Badge variant={v.is_active ? "solid" : "ghost"}>{v.is_active ? "ACTIVA" : "ANTERIOR"}</Badge>
                     <span className="text-xs text-slate-400">{v.updated_at ?? v.created_at ?? ""}</span>
-                    <Button variant="ghost" href={`/workouts/${v.id}`}>
+                    <Button variant="ghost" href={`${workoutBasePath ?? "/workouts"}/${v.id}`}>
                       Ver
                     </Button>
-                    <Button variant="secondary" href={`/workouts/structure?editWorkoutId=${v.id}`}>
-                      Editar
-                    </Button>
+                    {editBasePath ? (
+                      <Button variant="secondary" href={`${editBasePath}?editWorkoutId=${v.id}`}>
+                        Editar
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
               </Card>
@@ -991,5 +958,10 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
   );
 };
 
-export default WorkoutDetailLayout;
-
+export default WorkoutDetailLayout;
+
+
+
+
+
+

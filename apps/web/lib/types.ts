@@ -1,11 +1,3 @@
-export type LookupItem = {
-  id: number;
-  code: string;
-  name: string;
-  description?: string | null;
-  sort_order?: number | null;
-};
-
 export type MovementMuscle = {
   muscle_group: string;
   is_primary: boolean;
@@ -68,8 +60,6 @@ export type Workout = {
   is_active?: boolean | null;
   created_at?: string | null;
   updated_at?: string | null;
-  session_load?: string | null;
-  session_feel?: string | null;
   volume_total?: string | null;
   work_rest_ratio?: string | null;
   dominant_stimulus?: string | null;
@@ -133,8 +123,6 @@ export type WorkoutCreatePayload = {
   extra_attributes_json?: Record<string, unknown> | null;
   athlete_profile_desc: string;
   target_athlete_desc: string;
-  session_load: string;
-  session_feel: string;
   official_tag?: string | null;
   pacing_tip?: string | null;
   pacing_detail?: string | null;
@@ -156,12 +144,10 @@ export type WorkoutCreatePayload = {
 
 export type WorkoutAnalysis = {
   workout_id: number;
-  fatigue_score: number;
+  difficulty_score: number;
   hyrox_transfer: number;
   capacity_focus: { capacity: string; emphasis: string; note: string }[];
   pacing: { tip: string; range: string };
-  expected_feel: string;
-  session_load: string;
   xp_estimate?: number | null;
   xp_components?: Record<string, unknown>;
   id?: number;
@@ -198,29 +184,6 @@ export type WorkoutResultWithXp = {
   xp_total: number;
   level: number;
   progress_pct: number;
-  achievements_unlocked: string[];
-  missions_completed: string[];
-};
-
-export type TrainingLoad = {
-  id: number;
-  user_id: number;
-  load_date: string;
-  acute_load?: number | null;
-  chronic_load?: number | null;
-  load_ratio?: number | null;
-  notes?: string | null;
-};
-
-export type TrainingLoadDetail = {
-  id: number;
-  workout_id?: number | null;
-  workout_title?: string | null;
-  load_date: string | null;
-  executed_at?: string | null;
-  acute_load?: number | null;
-  chronic_load?: number | null;
-  notes?: string | null;
 };
 
 export type CapacityProfileItem = {
@@ -232,19 +195,19 @@ export type CapacityProfileItem = {
   measured_at: string;
 };
 
-export type LookupTables = {
-  athlete_levels: LookupItem[];
-  intensity_levels: LookupItem[];
-  energy_domains: LookupItem[];
-  physical_capacities: LookupItem[];
-  muscle_groups: LookupItem[];
-  hyrox_stations: LookupItem[];
-};
-
 export type AuthUser = {
   id: number;
   name: string;
   email: string;
+  role: "ATHLETE" | "COACH" | "ADMIN";
+};
+
+export type UserRead = {
+  id: number;
+  name: string;
+  email: string;
+  athlete_level?: string | null;
+  role: "ATHLETE" | "COACH" | "ADMIN";
 };
 
 export type AuthResponse = {
@@ -282,25 +245,6 @@ export type AthleteSkill = {
   measured_at: string;
 };
 
-export type AthleteBiometrics = {
-  measured_at: string;
-  hr_rest?: number | null;
-  hr_avg?: number | null;
-  hr_max?: number | null;
-  vo2_est?: number | null;
-  hrv?: number | null;
-  sleep_hours?: number | null;
-  fatigue_score?: number | null;
-  recovery_time_hours?: number | null;
-};
-
-export type AthleteTrainingLoad = {
-  load_date: string;
-  acute_load?: number | null;
-  chronic_load?: number | null;
-  load_ratio?: number | null;
-};
-
 export type AthletePR = {
   movement: string;
   pr_type: string;
@@ -309,47 +253,11 @@ export type AthletePR = {
   achieved_at: string;
 };
 
-export type Achievement = {
-  id: number;
-  code: string;
-  name: string;
-  description?: string | null;
-  category?: string | null;
-  xp_reward: number;
-  icon_url?: string | null;
-  unlocked_at?: string | null;
-};
-
-export type Mission = {
-  id: number;
-  mission_id: number;
-  type: string;
-  title: string;
-  description?: string | null;
-  xp_reward: number;
-  status: string;
-  progress_value: number;
-  target_value?: number | null;
-  expires_at?: string | null;
-  completed_at?: string | null;
-};
-
-export type Benchmark = {
-  capacity: string;
-  percentile?: number | null;
-  level?: number | null;
-};
-
 export type AthleteProfileResponse = {
   career: CareerSnapshot;
   capacities: AthleteCapacity[];
   skills: AthleteSkill[];
-  biometrics?: AthleteBiometrics | null;
-  training_load: AthleteTrainingLoad[];
   prs: AthletePR[];
-  achievements: Achievement[];
-  missions: Mission[];
-  benchmarks: Benchmark[];
 };
 
 export type Equipment = {

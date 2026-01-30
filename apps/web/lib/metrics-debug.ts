@@ -6,9 +6,6 @@ type AnyRecord = Record<string, unknown>;
 
 export const expectedMetricKeys = {
   capacities: [MetricKey.RESISTANCE, MetricKey.STRENGTH, MetricKey.METCON, MetricKey.GYMNASTICS, MetricKey.SPEED],
-  biometrics: [MetricKey.HR_REST, MetricKey.HR_AVG, MetricKey.HR_MAX, MetricKey.HRV, MetricKey.VO2_EST, MetricKey.SLEEP_HOURS],
-  load: [MetricKey.ACUTE_LOAD, MetricKey.CHRONIC_LOAD, MetricKey.LOAD_RATIO, MetricKey.RECOVERY_HOURS],
-  state: [MetricKey.FATIGUE_SCORE],
   skills: [MetricKey.SKILL_ROW, MetricKey.SKILL_WALL_BALLS, MetricKey.SKILL_KB_LUNGE, MetricKey.SKILL_BURPEE_BJO],
   hyrox: [MetricKey.HYROX_TRANSFER_SCORE]
 };
@@ -91,9 +88,7 @@ export function recordMetrics(page: string, source: string, payload: AnyRecord |
 
 export const frontendCalculatedCandidates = [
   MetricKey.HYROX_TRANSFER_SCORE,
-  "fatigue",
   "estimated_difficulty",
   "pacing_tip",
   "pacing_detail"
 ];
-

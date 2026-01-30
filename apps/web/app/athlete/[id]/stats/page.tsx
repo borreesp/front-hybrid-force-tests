@@ -188,7 +188,8 @@ export default function AthleteStatsPage() {
                 onChange={(e) => {
                   setMetricFilter(e.target.value);
                   if (athleteId) {
-                    router.replace(`/athlete/${athleteId}/stats?tab=skills&metric=${e.target.value}`);
+                    const url = `/athlete/${athleteId}/stats?tab=skills&metric=${e.target.value}`;
+                    router.replace(url as Route);
                   }
                 }}
                 className="rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-white"

@@ -31,7 +31,7 @@ export type ImpactBlockInput = {
 
 export type ImpactMovementResult = {
   name: string;
-  fatigue: number;
+  difficulty: number;
   quantity: number;
   unit: string;
   muscle: string;
@@ -44,17 +44,17 @@ export type ImpactMovementResult = {
 export type ImpactBlockResult = {
   blockIndex: number;
   title?: string;
-  fatigue: number;
+  difficulty: number;
   movements: ImpactMovementResult[];
 };
 
 export type WodImpactResult = {
-  fatigue_total: number;
-  raw_fatigue: number;
+  difficulty_total: number;
+  raw_difficulty: number;
   capacities: Record<string, number>;
   muscle_load: Record<string, number>;
   muscle_counts: Record<string, number>;
-  fatigue_by_block: ImpactBlockResult[];
+  difficulty_by_block: ImpactBlockResult[];
   warnings: string[];
 };
 
@@ -126,23 +126,23 @@ export const calculateWodImpact = (blocks: ImpactBlockInput[], athleteLevel: num
   const muscleCounts: Record<string, number> = {};
   const warnings: Set<string> = new Set();
   const breakdown: ImpactBlockResult[] = [];
-  let rawFatigueTotal = 0;
+  let rawDifficultyTotal = 0;
 
   blocks.forEach((block, blockIndex) => {
     const repeats = Math.max(1, block.rounds ?? 1);
-    let blockFatigue = 0;
+    let blockDifficulty = 0;
     const movementsResults: ImpactMovementResult[] = [];
 
     const processMovement = (mv: ImpactMovementInput) => {
-      // Rest blocks reduce fatiga ligeramente y no cargan músculos/capacidades
+      // Rest blocks reduce dificultad ligeramente y no cargan musculos/capacidades
       if (mv.name === "__REST__") {
         const duration = mv.duration_seconds ?? 0;
-        const recovery = -((duration / 60) * 0.5); // -0.5 por minuto de descanso
-        rawFatigueTotal += recovery;
-        blockFatigue += recovery;
+        const restDelta = -((duration / 60) * 0.5); // -0.5 por minuto de descanso
+        rawDifficultyTotal += restDelta;
+        blockDifficulty += restDelta;
         movementsResults.push({
           name: "Descanso",
-          fatigue: recovery,
+          difficulty: restDelta,
           quantity: duration,
           unit: "seconds",
           muscle: "rest",
@@ -169,7 +169,7 @@ export const calculateWodImpact = (blocks: ImpactBlockInput[], athleteLevel: num
       if (!quantity) {
         movementsResults.push({
           name: mv.name,
-          fatigue: 0,
+          difficulty: 0,
           quantity,
           unit,
           muscle: rule.main_muscle ?? "general",
@@ -195,17 +195,17 @@ export const calculateWodImpact = (blocks: ImpactBlockInput[], athleteLevel: num
       muscleCounts[muscle] = muscleCount;
       const musclePenalty = musclePenaltyForCount(muscleCount);
 
-      const movementFatigue = workScore * intensityMultiplier * musclePenalty;
+      const movementDifficulty = workScore * intensityMultiplier * musclePenalty;
       const executionMultiplier = mv.execution_multiplier ?? 1;
-      const movementFatigueFinal = movementFatigue * executionMultiplier;
-      rawFatigueTotal += movementFatigueFinal;
-      blockFatigue += movementFatigueFinal;
+      const movementDifficultyFinal = movementDifficulty * executionMultiplier;
+      rawDifficultyTotal += movementDifficultyFinal;
+      blockDifficulty += movementDifficultyFinal;
 
       Object.entries(rule.capacity_weights ?? {}).forEach(([cap, weight]) => {
-        capacities[cap] = (capacities[cap] ?? 0) + movementFatigueFinal * weight;
+        capacities[cap] = (capacities[cap] ?? 0) + movementDifficultyFinal * weight;
       });
 
-      muscleLoad[muscle] = (muscleLoad[muscle] ?? 0) + movementFatigueFinal;
+      muscleLoad[muscle] = (muscleLoad[muscle] ?? 0) + movementDifficultyFinal;
 
       if (muscleCount >= 4) {
         warnings.add(`Alta acumulacion de ${muscle} (x${muscleCount})`);
@@ -213,7 +213,7 @@ export const calculateWodImpact = (blocks: ImpactBlockInput[], athleteLevel: num
 
       movementsResults.push({
         name: mv.name,
-        fatigue: movementFatigue,
+        difficulty: movementDifficulty,
         quantity,
         unit,
         muscle,
@@ -231,20 +231,21 @@ export const calculateWodImpact = (blocks: ImpactBlockInput[], athleteLevel: num
     breakdown.push({
       blockIndex,
       title: block.title ?? `Bloque ${blockIndex + 1}`,
-      fatigue: blockFatigue,
+      difficulty: blockDifficulty,
       movements: movementsResults
     });
   });
 
-  const fatigue_total = clamp(rawFatigueTotal, 0, 10);
+  const difficulty_total = clamp(rawDifficultyTotal, 0, 10);
 
   return {
-    fatigue_total,
-    raw_fatigue: rawFatigueTotal,
+    difficulty_total,
+    raw_difficulty: rawDifficultyTotal,
     capacities,
     muscle_load: muscleLoad,
     muscle_counts: muscleCounts,
-    fatigue_by_block: breakdown,
+    difficulty_by_block: breakdown,
     warnings: Array.from(warnings)
   };
 };
+

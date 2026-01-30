@@ -11,12 +11,8 @@ type Props = {
   mode: "analysis" | "workout" | "preview";
 };
 
-const requiredImpactKeys = ["metcon", "resistencia", "fuerza", "tecnica", "movilidad", "mentalidad", "carga_muscular", "fatigue", "load_ratio"];
-const statusKeys = ["fatigue", "acute_load", "load_ratio", "carga_muscular"];
-
+const requiredImpactKeys = ["metcon", "resistencia", "fuerza", "gimnasticos", "velocidad", "tecnica", "movilidad", "mentalidad", "carga_muscular", "core", "wallball_skill"];
 const labels: Record<string, string> = {
-  fatigue: "Fatiga actual",
-  fatigue_score: "Fatiga actual",
   resistencia: "Resistencia",
   resistance: "Resistencia",
   endurance: "Resistencia",
@@ -31,21 +27,10 @@ const labels: Record<string, string> = {
   core: "Core",
   wb_skill: "WallBall skill",
   wallball_skill: "WallBall skill",
-  hr_rest: "FC reposo",
-  hr_avg: "FC media",
-  hr_max: "FC maxima",
-  vo2_est: "VO2 estimado",
-  hrv: "HRV",
-  sleep_hours: "Horas sueno",
-  recovery_time_hours: "Recuperacion",
-  acute_load: "Carga aguda",
-  chronic_load: "Carga cronica",
-  load_ratio: "Load ratio",
-  tecnica: "Técnica",
+  tecnica: "Tecnica",
   movilidad: "Movilidad",
   mentalidad: "Mentalidad"
 };
-
 const alias: Record<string, string> = {
   resistencia: "resistencia",
   resistance: "resistencia",
@@ -68,27 +53,12 @@ const alias: Record<string, string> = {
   skill_wall_ball: "wallball_skill",
   skill_wallball: "wallball_skill",
   skill_wb: "wallball_skill",
-  fatigue_score: "fatigue",
-  fatigue: "fatigue",
-  fatiga: "fatigue",
-  hr_rest: "hr_rest",
-  hr_avg: "hr_avg",
-  hr_max: "hr_max",
-  vo2_est: "vo2_est",
-  vo2: "vo2_est",
-  hrv: "hrv",
-  sleep_hours: "sleep_hours",
-  recovery_time_hours: "recovery_time_hours",
-  acute_load: "acute_load",
-  chronic_load: "chronic_load",
-  load_ratio: "load_ratio",
   tecnica: "tecnica",
   tecnica_basal: "tecnica",
   movilidad: "movilidad",
   mentalidad: "mentalidad",
   mindset: "mentalidad"
 };
-
 const normalizeKey = (raw: string) => {
   const base = raw
     .toLowerCase()
@@ -208,9 +178,7 @@ export const AthleteImpact: React.FC<Props> = ({ athleteProfile, athleteImpact, 
         metricsNotCalculable.map((m) => `${m}: impacto sin baseline en perfil o sin formula conocida`).join(" | ")
       );
     }
-  }, [athleteImpact, athleteProfile, metricsMissing, metricsMissingData, metricsNotCalculable, metricsWithImpact, rows]);
-  const statusRows = rows.filter((r) => statusKeys.includes(r.normalized));
-  const capacityRows = rows.filter((r) => !statusKeys.includes(r.normalized));
+  }, [athleteImpact, athleteProfile, metricsMissing, metricsMissingData, metricsNotCalculable, metricsWithImpact, rows]);  const capacityRows = rows;
 
   const capacityVisible = useMemo(() => {
     if (showAllCapacities) return capacityRows;
@@ -247,38 +215,7 @@ export const AthleteImpact: React.FC<Props> = ({ athleteProfile, athleteImpact, 
         </div>
       </div>
 
-      <div className="mt-4 space-y-5">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Estado de hoy</p>
-          </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {statusRows.map((row) => (
-              <div
-                key={row.normalized}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 shadow-[0_6px_18px_rgba(0,0,0,0.25)]"
-              >
-                <div className="flex items-center justify-between text-[12px] font-semibold text-slate-100">
-                  <span>{row.label}</span>
-                  <span className={classifyColor(row.normalized, row.impact)}>
-                    {row.impact > 0 ? `+${row.impact}` : row.impact}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  Actual: <span className="text-slate-200">{row.hadValue ? row.current : "—"}</span>
-                  {mode === "analysis" && row.hadValue && (
-                    <>
-                      {" — "}
-                      <span className="text-slate-300">Nuevo: {row.newValue}</span>
-                    </>
-                  )}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-2">
+      <div className="mt-4 space-y-5"><div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Capacidades impactadas</p>
             <Button variant="ghost" size="sm" onClick={() => setShowAllCapacities((prev) => !prev)}>
@@ -314,12 +251,12 @@ export const AthleteImpact: React.FC<Props> = ({ athleteProfile, athleteImpact, 
     </Card>
   );
 };
-
-const negativeKeywords = ["fatigue", "load", "acute", "chronic", "stress"];
-
-const classifyColor = (normalized: string, impact: number) => {
-  const isNegativeMetric = negativeKeywords.some((kw) => normalized.includes(kw));
+const classifyColor = (_normalized: string, impact: number) => {
   if (impact === 0) return "text-slate-300";
-  if (impact > 0) return isNegativeMetric ? "text-rose-300" : "text-emerald-300";
-  return isNegativeMetric ? "text-emerald-300" : "text-rose-300";
+  return impact > 0 ? "text-emerald-300" : "text-rose-300";
 };
+
+
+
+
+

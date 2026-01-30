@@ -10,7 +10,9 @@
  * IMPORTS
  * ================================================================================================= */
 import React, { useEffect, useMemo, useState } from "react";
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
+import { useAppStore } from "@thrifty/utils";
 import { Button, Card, Section } from "@thrifty/ui";
 import {
   closestCenter,
@@ -99,32 +101,6 @@ type WodBlock = {
   movements: WodMovement[];
 };
 
-type DraftParsedWod = {
-  title?: string;
-  notes?: string;
-  blocks?: Array<{
-    block_type?: string;
-    title?: string;
-    rounds?: number;
-    work_seconds?: number;
-    rest_seconds?: number;
-    pattern?: string[] | null;
-    scenarios?: Array<{
-      code?: string;
-      movements?: Array<{
-        name_raw?: string;
-        movement_id?: number;
-        reps?: number;
-        load?: number;
-        load_unit?: string;
-        distance_meters?: number;
-        duration_seconds?: number;
-        calories?: number;
-      }>;
-    }>;
-  }>;
-};
-
 type DragItem =
   | { type: "template"; movementId: number }
   | { type: "movement"; blockId: string; uid: string };
@@ -134,7 +110,6 @@ type DropZone =
   | { type: "movement"; blockId: string; uid: string };
 
 type AnalysisResult = {
-  fatigue: number;
   xpEstimate?: number;
   domain: string;
   intensity: string;
@@ -457,11 +432,11 @@ const estimateTotalTimeSeconds = (blocks: WodBlock[]) => {
   }, 0);
 };
 
-const estimatePacing = (totalTime: number, fatigue: number) => {
+const estimatePacing = (totalTime: number, difficulty: number) => {
   if (!totalTime) return "Define bloques para sugerir pacing";
   const minutes = totalTime / 60;
-  const delta = fatigue >= 7 ? 3 : fatigue >= 4 ? 2 : 1;
-  return `Objetivo ${Math.round(minutes)}-${Math.round(minutes + delta)} min (fatiga ${fatigue.toFixed(1)}/10)`;
+  const delta = difficulty >= 7 ? 3 : difficulty >= 4 ? 2 : 1;
+  return `Objetivo ${Math.round(minutes)}-${Math.round(minutes + delta)} min (dificultad ${difficulty.toFixed(1)}/10)`;
 };
 
 const formatTotalTime = (seconds?: number) => {
@@ -489,7 +464,7 @@ const computeAnalysis = (blocks: WodBlock[], athleteProfile?: AthleteProfileResp
   const impactResult = calculateWodImpact(impactDefinition, athleteLevel);
 
   const totalTime = estimateTotalTimeSeconds(blocks);
-  const intensity = impactResult.fatigue_total >= 8 ? "Alta" : impactResult.fatigue_total >= 5 ? "Media" : "Baja";
+  const intensity = impactResult.difficulty_total >= 8 ? "Alta" : impactResult.difficulty_total >= 5 ? "Media" : "Baja";
 
   const capacityEntries = Object.entries(impactResult.capacities);
   const maxCapacity = Math.max(...capacityEntries.map(([, value]) => value), 1);
@@ -520,20 +495,20 @@ const computeAnalysis = (blocks: WodBlock[], athleteProfile?: AthleteProfileResp
     volume_total: totalTime.toString()
   });
 
-  // Ajuste HYROX: proporción de fatiga procedente de movimientos HYROX
+  // Ajuste HYROX: proporcion de dificultad procedente de movimientos HYROX
   const hyroxKeys = ["run", "row", "wall ball", "sled", "ski", "burpee", "lunge", "farmer"];
-  const totalMvFatigue =
-    impactResult.fatigue_by_block?.flatMap((b) => b.movements)?.reduce((sum, mv) => sum + (mv.fatigue ?? 0), 0) ?? 0;
-  const hyroxFatigue =
-    impactResult.fatigue_by_block
+  const totalMvDifficulty =
+    impactResult.difficulty_by_block?.flatMap((b) => b.movements)?.reduce((sum, mv) => sum + (mv.difficulty ?? 0), 0) ?? 0;
+  const hyroxDifficulty =
+    impactResult.difficulty_by_block
       ?.flatMap((b) => b.movements)
       ?.filter((mv) => hyroxKeys.some((k) => mv.name.toLowerCase().includes(k)))
-      ?.reduce((sum, mv) => sum + (mv.fatigue ?? 0), 0) ?? 0;
-  const hyroxRatio = totalMvFatigue > 0 ? Math.min(100, Math.max(0, (hyroxFatigue / totalMvFatigue) * 100)) : 0;
+      ?.reduce((sum, mv) => sum + (mv.difficulty ?? 0), 0) ?? 0;
+  const hyroxRatio = totalMvDifficulty > 0 ? Math.min(100, Math.max(0, (hyroxDifficulty / totalMvDifficulty) * 100)) : 0;
   const hyroxTransfer = hyroxRatio > 0 ? Math.round(hyroxRatio) : hyroxDetail.transferScore;
-  const xpEstimate = computeXpEstimate(impactResult.fatigue_total ?? 0, athleteLevel).xp;
+  const xpEstimate = computeXpEstimate(impactResult.difficulty_total ?? 0, athleteLevel).xp;
 
-  const breakdown = impactResult.fatigue_by_block.map((block, idx) => ({
+  const breakdown = impactResult.difficulty_by_block.map((block, idx) => ({
     ...block,
     title: block.title ?? blocks[idx]?.title ?? `Bloque ${idx + 1}`
   }));
@@ -542,7 +517,6 @@ const computeAnalysis = (blocks: WodBlock[], athleteProfile?: AthleteProfileResp
   capacities.forEach((cap) => {
     impact[cap.key] = Math.round(cap.value);
   });
-  impact.fatigue = Math.round(impactResult.fatigue_total);
   if (muscles[0]) {
     impact.carga_muscular = Math.round(muscles[0].value * 2);
   }
@@ -556,11 +530,10 @@ const computeAnalysis = (blocks: WodBlock[], athleteProfile?: AthleteProfileResp
     });
   }
 
-  const difficulty = clampValue(impactResult.fatigue_total + impactResult.warnings.length * 0.5, 1, 10);
-  const pacing = estimatePacing(totalTime, impactResult.fatigue_total);
+  const difficulty = clampValue(impactResult.difficulty_total + impactResult.warnings.length * 0.5, 1, 10);
+  const pacing = estimatePacing(totalTime, impactResult.difficulty_total);
 
   return {
-    fatigue: Number(impactResult.fatigue_total.toFixed(1)),
     xpEstimate,
     domain,
     intensity,
@@ -584,17 +557,6 @@ const buildAthleteProfileMetrics = (profile?: AthleteProfileResponse | null) => 
   (profile.capacities ?? []).forEach((c) => {
     if (c.capacity) map[c.capacity.toLowerCase()] = c.value;
   });
-  const bio = profile.biometrics;
-  if (bio) {
-    if (bio.fatigue_score !== undefined && bio.fatigue_score !== null) map.fatigue_score = Number(bio.fatigue_score);
-    if (bio.hr_rest) map.hr_rest = Number(bio.hr_rest);
-    if (bio.vo2_est) map.vo2_est = Number(bio.vo2_est);
-  }
-  const load = profile.training_load?.[0];
-  if (load) {
-    if (load.acute_load) map.acute_load = Number(load.acute_load);
-    if (load.load_ratio) map.load_ratio = Number(load.load_ratio);
-  }
   return map;
 };
 
@@ -1633,7 +1595,7 @@ export function WodAnalysisPanel({ analysis }: { analysis: AnalysisResult }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Analisis en tiempo real</p>
-          <p className="text-sm text-slate-300">Fatiga, dominio y pacing se recalculan en cada cambio.</p>
+          <p className="text-sm text-slate-300">Dificultad, dominio y pacing se recalculan en cada cambio.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <span className={pill}>{analysis.totalTime ? `${Math.round(analysis.totalTime / 60)} min totales` : "Tiempo N/A"}</span>
@@ -1644,17 +1606,16 @@ export function WodAnalysisPanel({ analysis }: { analysis: AnalysisResult }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className={statCard}>
           <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-slate-400">
-            Fatiga estimada <HelpTooltip helpKey="wodBuilder.fatigueEstimated" />
+            Dificultad estimada <HelpTooltip helpKey="wodBuilder.difficultyEstimated" />
           </p>
-          <p className="text-3xl font-semibold">{analysis.fatigue}/10</p>
-          <p className="text-[11px] text-slate-400">Dificultad: {analysis.difficulty}/10</p>
+          <p className="text-3xl font-semibold">{analysis.difficulty}/10</p>
         </div>
         <div className={statCard}>
           <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-slate-400">
             XP estimada <HelpTooltip helpKey="wodBuilder.xpEstimate" />
           </p>
           <p className="text-3xl font-semibold">{analysis.xpEstimate ?? "-"}</p>
-          <p className="text-[11px] text-slate-400">Basado en fatiga y nivel actual</p>
+          <p className="text-[11px] text-slate-400">Basado en dificultad y nivel actual</p>
         </div>
         <div className={statCard}>
           <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-slate-400">
@@ -1773,7 +1734,7 @@ export function WodAnalysisPanel({ analysis }: { analysis: AnalysisResult }) {
             <div key={block.blockIndex} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white">
               <div className="flex items-center justify-between">
                 <span className="font-semibold">{block.title}</span>
-                <span className="text-xs text-amber-200">{block.fatigue.toFixed(2)} fatiga</span>
+                <span className="text-xs text-amber-200">{block.difficulty.toFixed(2)} dificultad</span>
               </div>
               {analysis.patternPreview && (
                 <p className="text-[11px] text-slate-400">Patron: {analysis.patternPreview.join(" ")} (x{analysis.breakdown.length})</p>
@@ -1783,7 +1744,7 @@ export function WodAnalysisPanel({ analysis }: { analysis: AnalysisResult }) {
                   <li key={`${block.blockIndex}-${idx}`} className="flex items-center justify-between rounded-md bg-slate-900/50 px-2 py-1">
                     <span>{mv.name}</span>
                     <span className="text-amber-100">
-                      {mv.fatigue.toFixed(2)} ({mv.quantity} {mv.unit})
+                      {mv.difficulty.toFixed(2)} ({mv.quantity} {mv.unit})
                     </span>
                   </li>
                 ))}
@@ -1798,154 +1759,10 @@ export function WodAnalysisPanel({ analysis }: { analysis: AnalysisResult }) {
 }
 
 /* =================================================================================================
- * DRAFT OCR Y MAPEOS DE BLOQUES
- * ================================================================================================= */
-
-function mapDraftToBlocks(
-  draft: DraftParsedWod | any,
-  movements: Movement[]
-): { blocks: WodBlock[]; title?: string; unresolved: any[] } {
-  console.debug("[wod-builder] mapDraftToBlocks raw draft", draft);
-  if (!draft?.blocks?.length) return { blocks: [], title: draft.title, unresolved: draft?.unresolved ?? [] };
-
-  const normalizeBlockType = (raw?: string) => {
-    const bt = String(raw || "").toLowerCase();
-    if (["intervals", "interval", "work_rest", "workrest"].includes(bt)) return "INTERVALS";
-    if (["rounds", "round"].includes(bt)) return "ROUNDS";
-    return "STANDARD";
-  };
-
-  const fuzzyIncludes = (a: string, b: string) => a.includes(b) || b.includes(a);
-
-  const findMovement = (mvDraft: any): Movement | null => {
-    const normName = (mvDraft?.name_raw || "").toLowerCase().trim();
-    const rawName = (mvDraft?.raw || mvDraft?.unresolved_label || "").toLowerCase().trim();
-    const candidates = [mvDraft?.movement_id, normName, rawName].filter(Boolean);
-    for (const candidate of candidates) {
-      if (typeof candidate === "number") {
-        const byId = movements.find((m) => m.id === candidate);
-        if (byId) return byId;
-      } else if (typeof candidate === "string") {
-        const exact = movements.find((m) => m.name.toLowerCase() === candidate);
-        if (exact) return exact;
-        const loose = movements.find((m) => fuzzyIncludes(m.name.toLowerCase(), candidate));
-        if (loose) return loose;
-      }
-    }
-    return null;
-  };
-
-  const isRemaining = (mvDraft: any) => {
-    const raw = `${mvDraft?.raw || ""} ${mvDraft?.name_raw || ""} ${mvDraft?.unit || ""}`.toLowerCase();
-    if (mvDraft?.is_max === true) return true;
-    if (raw.includes("max") || raw.includes("máx")) return true;
-    return false;
-  };
-
-  const hasQuantity = (mvDraft: any) =>
-    mvDraft?.reps ||
-    mvDraft?.calories ||
-    mvDraft?.distance_meters ||
-    mvDraft?.duration_seconds ||
-    mvDraft?.metric?.value;
-
-  const unresolved: any[] = [];
-
-  const blocks: WodBlock[] = draft.blocks.map((b: any, idx: number) => {
-    console.debug("[wod-builder] mapping block", b);
-    const blockMovements: WodMovement[] = [];
-    const scenarios = b.scenarios || [];
-    const scenarioDefs =
-      scenarios.map((scenario: any, sIdx: number) => {
-        const tasks: Array<{ movement_uid: string; role: "CAP" | "REMAINING" | "STANDARD" }> = [];
-        (scenario.items || scenario.movements || []).forEach((mv: any, mvIdx: number) => {
-          const tpl = findMovement(mv);
-          const uidVal = `${idx}-${sIdx}-${mvIdx}-${Date.now()}`;
-          const role: "CAP" | "REMAINING" | "STANDARD" = isRemaining(mv)
-            ? "REMAINING"
-            : hasQuantity(mv)
-              ? "CAP"
-              : "STANDARD";
-
-          if (tpl) {
-            blockMovements.push({
-              uid: uidVal,
-              movement: tpl,
-              reps: mv.reps,
-              load: mv.load,
-              load_unit: mv.load_unit,
-              distance_meters: mv.distance_meters,
-              calories: mv.calories,
-              duration_seconds: mv.duration_seconds
-            });
-          } else {
-            const placeholder: Movement = {
-              id: -1000 - blockMovements.length,
-              name: mv.raw || mv.name_raw || "Movimiento no resuelto",
-              category: "Unresolved",
-              default_load_unit: mv.load_unit ?? null,
-              muscles: [],
-              video_url: null,
-              description: mv.raw || mv.name_raw || ""
-            } as any;
-            blockMovements.push({
-              uid: uidVal,
-              movement: placeholder,
-              reps: mv.reps,
-              load: mv.load,
-              load_unit: mv.load_unit,
-              distance_meters: mv.distance_meters,
-              calories: mv.calories,
-              duration_seconds: mv.duration_seconds
-            });
-            unresolved.push({
-              scenario: scenario.label || scenario.code || `Escenario ${sIdx + 1}`,
-              index: mvIdx,
-              raw: mv.raw || mv.name_raw,
-              reason: "no_match_catalog"
-            });
-          }
-          tasks.push({
-            movement_uid: uidVal,
-            role
-          });
-        });
-        console.debug("[wod-builder] scenario built", { label: scenario.label, tasks });
-        return {
-          label: scenario.label || scenario.code || `Escenario ${sIdx + 1}`,
-          tasks
-        };
-      }) || [];
-
-    const mappedType = normalizeBlockType(b.block_type);
-    console.debug("[wod-builder] block result", {
-      mappedType,
-      scenarios: scenarioDefs,
-      movements: blockMovements
-    });
-    return {
-      id: `draft-${idx}-${Date.now()}`,
-      title: (b as any).title || draft.title || `Bloque ${idx + 1}`,
-      block_type: mappedType as WodBlock["block_type"],
-      movements: blockMovements,
-      rounds: b.rounds,
-      scenario_work_seconds: b.work_seconds,
-      scenario_rest_seconds: b.rest_seconds,
-      pattern: (b as any).pattern || (b.scenarios ? b.scenarios.map((s: any) => s.code || s.label || "A") : undefined),
-      scenarios: scenarioDefs
-    };
-  });
-
-  const finalUnresolved = unresolved.length ? unresolved : draft.unresolved ?? [];
-  console.debug("[wod-builder] mapDraftToBlocks final", { blocks, unresolved: finalUnresolved });
-  return { blocks, title: draft.title, unresolved: finalUnresolved };
-}
-
-/* =================================================================================================
  * COMPONENTE PRINCIPAL
  * ================================================================================================= */
 
-export function WodBuilder({ editWorkoutId, draftKey }: { editWorkoutId?: string; draftKey?: string }) {
+export function WodBuilder({ editWorkoutId }: { editWorkoutId?: string }) {
   const [movements, setMovements] = useState<Movement[]>([]);
   const [blocks, setBlocks] = useState<WodBlock[]>([
     {
@@ -1967,10 +1784,9 @@ export function WodBuilder({ editWorkoutId, draftKey }: { editWorkoutId?: string
   const [activeDrag, setActiveDrag] = useState<DragItem | null>(null);
   const [editingWorkout, setEditingWorkout] = useState<Workout | null>(null);
   const router = useRouter();
+  const role = useAppStore((s) => s.user?.role ?? "COACH");
   const [showConfirmSave, setShowConfirmSave] = useState(false);
   const [pendingKind, setPendingKind] = useState<"wod" | "template" | "ai" | null>(null);
-  const [unresolvedDraft, setUnresolvedDraft] = useState<any[]>([]);
-  const [draftLoaded, setDraftLoaded] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1983,29 +1799,6 @@ export function WodBuilder({ editWorkoutId, draftKey }: { editWorkoutId?: string
     api.getMovements().then(setMovements).catch(() => setMovements([]));
     api.getAthleteProfile().then(setAthleteProfile).catch(() => setAthleteProfile(null));
   }, []);
-
-  useEffect(() => {
-    if (!movements.length || draftLoaded) return;
-    try {
-      const raw = localStorage.getItem("wod_builder_draft");
-      if (!raw) return;
-      console.debug("[wod-builder] loading draft from localStorage");
-      const parsed = JSON.parse(raw) as { parsed: DraftParsedWod | any };
-      const mapped = mapDraftToBlocks(parsed.parsed, movements);
-      if (mapped.blocks.length) {
-        setBlocks(mapped.blocks);
-        if (mapped.title) setWorkoutTitle(mapped.title);
-        setStatus("Draft cargado desde OCR.");
-      }
-      setUnresolvedDraft(mapped.unresolved || []);
-      setDraftLoaded(true);
-      if (draftKey) {
-        localStorage.removeItem("wod_builder_draft");
-      }
-    } catch (err) {
-      console.warn("No se pudo cargar draft OCR", err);
-    }
-  }, [movements, draftLoaded, draftKey]);
 
   useEffect(() => {
     if (!editWorkoutId) return;
@@ -2258,8 +2051,6 @@ export function WodBuilder({ editWorkoutId, draftKey }: { editWorkoutId?: string
       },
       athlete_profile_desc: "Auto generado segun tu perfil y el constructor visual.",
       target_athlete_desc: `Orientado a ${intensity} intensidad y dominio ${domain}`,
-      session_load: `${analysis.fatigue}/10`,
-      session_feel: analysis.intensity,
       official_tag: purpose === "template" ? "template" : undefined,
       pacing_tip: analysis.pacing,
       pacing_detail: analysis.pacing,
@@ -2328,7 +2119,7 @@ export function WodBuilder({ editWorkoutId, draftKey }: { editWorkoutId?: string
       }
 
       if (saved?.id) {
-        router.push(`/workouts/${saved.id}`);
+        router.push(`/coach/workouts/${saved.id}` as Route);
       }
     } catch (error: any) {
       setStatus(buildErrorMessage(error));
@@ -2397,13 +2188,8 @@ export function WodBuilder({ editWorkoutId, draftKey }: { editWorkoutId?: string
 
   useEffect(() => {
     if (!athleteProfile && !analysis) return;
-    recordMetrics("wodBuilder", "athleteProfile", athleteMetrics, [
-      ...expectedMetricKeys.capacities,
-      ...expectedMetricKeys.biometrics,
-      ...expectedMetricKeys.load,
-      ...expectedMetricKeys.state
-    ]);
-    recordMetrics("wodBuilder", "analysis", adaptAthleteImpact(analysis as any), [...expectedMetricKeys.hyrox, "fatigue", "difficulty", "totalTime"]);
+    recordMetrics("wodBuilder", "athleteProfile", athleteMetrics, [...expectedMetricKeys.capacities, ...expectedMetricKeys.skills]);
+    recordMetrics("wodBuilder", "analysis", adaptAthleteImpact(analysis as any), [...expectedMetricKeys.hyrox, "difficulty", "totalTime"]);
   }, [analysis, athleteMetrics, athleteProfile]);
 
   return (
@@ -2446,23 +2232,15 @@ export function WodBuilder({ editWorkoutId, draftKey }: { editWorkoutId?: string
         description="Construye un WOD visualmente, arrastra movimientos y observa el analisis en tiempo real."
         className={sectionShell}
       >
-        {unresolvedDraft.length > 0 && (
-          <div className="mb-2 rounded-xl border border-amber-300/40 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
-            {unresolvedDraft.length} movimientos sin resolver desde el OCR. Añádelos manualmente o selecciónalos antes de guardar.
-            <Button size="sm" variant="ghost" className="ml-2" onClick={() => setUnresolvedDraft([])}>
-              Marcar como resuelto
-            </Button>
-          </div>
-        )}
         <div className="grid gap-3 md:grid-cols-2">
           <div className="flex flex-wrap gap-3">
-            <Button variant="primary" onClick={() => handleSave("wod")} disabled={unresolvedDraft.length > 0}>
+            <Button variant="primary" onClick={() => handleSave("wod")}>
               Guardar WOD
             </Button>
-            <Button variant="secondary" onClick={() => handleSave("template")} disabled={unresolvedDraft.length > 0}>
+            <Button variant="secondary" onClick={() => handleSave("template")}>
               Guardar como plantilla
             </Button>
-            <Button variant="ghost" onClick={() => handleSave("ai")} disabled={unresolvedDraft.length > 0}>
+            <Button variant="ghost" onClick={() => handleSave("ai")}>
               Analizar con IA
             </Button>
             <Button variant="ghost" onClick={handleGenerateRandom}>
@@ -2498,8 +2276,8 @@ export function WodBuilder({ editWorkoutId, draftKey }: { editWorkoutId?: string
         {status && <span className="text-sm text-slate-300">{status}</span>}
         <div className="mt-4 grid gap-2 md:grid-cols-4">
           <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Fatiga</p>
-            <p className="text-xl font-semibold">{analysis.fatigue}/10</p>
+            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Dificultad</p>
+            <p className="text-xl font-semibold">{analysis.difficulty}/10</p>
           </div>
           <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white">
             <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Dominio</p>
@@ -2564,3 +2342,11 @@ export default WodBuilder;
  * CHANGELOG
  * - 2026-01-27: Reestructuración del archivo con secciones y comentarios en español.
  * ================================================================================================= */
+
+
+
+
+
+
+
+

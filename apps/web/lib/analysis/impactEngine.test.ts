@@ -16,9 +16,12 @@ const rowBase = calculateWodImpact(
   ],
   level
 );
-assert(rowBase.fatigue_total > 0.7 && rowBase.fatigue_total < 1.6, "Row 500m should create ~1.0 fatigue");
+assert(
+  rowBase.difficulty_total > 0.7 && rowBase.difficulty_total < 1.6,
+  "Row 500m should create ~1.0 difficulty"
+);
 
-// Faster target time should increase fatigue
+// Faster target time should increase difficulty
 const rowFast = calculateWodImpact(
   [
     {
@@ -28,7 +31,7 @@ const rowFast = calculateWodImpact(
   ],
   level
 );
-assert(rowFast.fatigue_total > rowBase.fatigue_total, "Faster target time should raise fatigue");
+assert(rowFast.difficulty_total > rowBase.difficulty_total, "Faster target time should raise difficulty");
 
 // Repeated pull movements should apply muscle penalty
 const pullRepeat = calculateWodImpact(
@@ -46,7 +49,7 @@ const pullRepeat = calculateWodImpact(
   level
 );
 assert(
-  pullRepeat.muscle_counts.pull >= 4 && pullRepeat.fatigue_total > rowBase.fatigue_total,
+  pullRepeat.muscle_counts.pull >= 4 && pullRepeat.difficulty_total > rowBase.difficulty_total,
   "Muscle penalty should accumulate on repeated pull work"
 );
 

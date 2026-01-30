@@ -4,6 +4,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Card, Section } from "@thrifty/ui";
 import { api } from "../../lib/api";
 import type { Workout } from "../../lib/types";
+import { useAppStore } from "@thrifty/utils";
+import { useSearchParams } from "next/navigation";
 
 const statTone = {
   cardio: "text-cyan-200",
@@ -17,6 +19,13 @@ export default function WorkoutsPage() {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({ domain: "", intensity: "", hyrox: "" });
   const [search, setSearch] = useState("");
+  const [assignMessage, setAssignMessage] = useState<string | null>(null);
+  const [athleteName, setAthleteName] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const role = useAppStore((s) => s.user?.role ?? "ATHLETE");
+  const effectiveRole = role === "ADMIN" ? "COACH" : role;
+  const athleteId = searchParams?.get("athleteId");
+  const basePath = effectiveRole === "COACH" ? "/coach/workouts" : "/athlete/workouts";
 
   useEffect(() => {
     setStatus("loading");
@@ -31,6 +40,17 @@ export default function WorkoutsPage() {
         setStatus("error");
       });
   }, []);
+
+  useEffect(() => {
+    if (!athleteId) {
+      setAthleteName(null);
+      return;
+    }
+    api
+      .getUser(athleteId)
+      .then((user) => setAthleteName(user.name))
+      .catch(() => setAthleteName(null));
+  }, [athleteId]);
 
   const uniqueStrings = (items: (string | null | undefined)[]) => {
     const seen = new Set<string>();
@@ -132,6 +152,23 @@ export default function WorkoutsPage() {
         </div>
       </Section>
 
+      {effectiveRole === "COACH" && athleteId && (
+        <div className="rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-200">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Asignar test</p>
+              <p className="text-sm text-white">
+                Atleta: <span className="font-semibold">{athleteName ?? `#${athleteId}`}</span>
+              </p>
+            </div>
+            <Link href={`/coach/workouts/new?athleteId=${athleteId}`} className="text-xs font-semibold text-cyan-300">
+              Crear test en builder
+            </Link>
+          </div>
+          {assignMessage && <p className="mt-2 text-xs text-emerald-200">{assignMessage}</p>}
+        </div>
+      )}
+
       {status === "error" && (
         <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
           Error al cargar los workouts: {error}
@@ -166,16 +203,35 @@ export default function WorkoutsPage() {
               </div>
               {renderTags(workout)}
               <div className="mt-4 flex items-center justify-between text-sm text-slate-300">
-                <span>{workout.session_load || "Carga N/A"}</span>
+                <span>Dificultad: {workout.estimated_difficulty ?? "N/A"}</span>
                 <span className={`text-xs font-semibold ${statTone[tone]}`}>{tone.toUpperCase()}</span>
               </div>
               <div className="mt-3 flex items-center justify-between">
-                <Link href={`/workouts/${workout.id}`} className="text-sm font-semibold text-cyan-300">
+                <Link href={`${basePath}/${workout.id}`} className="text-sm font-semibold text-cyan-300">
                   Ver detalle
                 </Link>
-                <span className="text-xs text-slate-400">
-                  {workout.avg_time_seconds ? `${Math.round(workout.avg_time_seconds / 60)} min` : "Tiempo s/n"}
-                </span>
+                {effectiveRole === "COACH" && athleteId ? (
+                  <button
+                    className="text-xs font-semibold text-slate-200"
+                    type="button"
+                    onClick={async () => {
+                      if (typeof window === "undefined") return;
+                      const shareUrl = `${window.location.origin}/athlete/workouts/${workout.id}`;
+                      try {
+                        await navigator.clipboard.writeText(shareUrl);
+                        setAssignMessage(`Enlace copiado para asignar "${workout.title}".`);
+                      } catch {
+                        setAssignMessage("No se pudo copiar el enlace.");
+                      }
+                    }}
+                  >
+                    Asignar test
+                  </button>
+                ) : (
+                  <span className="text-xs text-slate-400">
+                    {workout.avg_time_seconds ? `${Math.round(workout.avg_time_seconds / 60)} min` : "Tiempo s/n"}
+                  </span>
+                )}
               </div>
             </Card>
           );

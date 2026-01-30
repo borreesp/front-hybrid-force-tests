@@ -1,8 +1,8 @@
 "use client";
 import React from "react";
-import { WodBuilder } from "../../../components/wod-builder/WodBuilder";
+import { WodBuilder } from "../../../../components/wod-builder/WodBuilder";
 
-export default function WorkoutStructurePage({
+export default function CoachWorkoutBuilderPage({
   searchParams
 }: {
   searchParams?: { editWorkoutId?: string };

@@ -9,6 +9,24 @@ export const AuthShell: React.FC<{ children: React.ReactNode }> = ({ children })
   const pathname = usePathname();
   const router = useRouter();
   const isAuthRoute = pathname?.startsWith("/auth");
+  const role = user?.role ?? "ATHLETE";
+  const effectiveRole = role === "ADMIN" ? "COACH" : role;
+
+  const roleHome =
+    effectiveRole === "COACH" ? "/coach/athletes" : "/athlete";
+
+  const isAllowedPath = (path?: string | null) => {
+    if (!path) return false;
+    if (path.startsWith("/auth")) return true;
+    if (effectiveRole === "COACH") {
+      return (
+        path.startsWith("/coach/athletes") ||
+        path.startsWith("/coach/workouts") ||
+        path.startsWith("/coach/structure")
+      );
+    }
+    return path.startsWith("/athlete");
+  };
 
   useEffect(() => {
     if (authLoading || !hydrated) return;
@@ -16,9 +34,31 @@ export const AuthShell: React.FC<{ children: React.ReactNode }> = ({ children })
       router.replace("/auth/login");
     }
     if (user && isAuthRoute && !pathname?.includes("register")) {
-      router.replace("/");
+      router.replace(roleHome);
     }
-  }, [authLoading, hydrated, isAuthRoute, pathname, router, user]);
+    if (user && !isAuthRoute) {
+      if (pathname === "/") {
+        router.replace(roleHome);
+        return;
+      }
+      if (!isAllowedPath(pathname)) {
+        router.replace(roleHome);
+        return;
+      }
+      if (effectiveRole === "COACH" && pathname?.startsWith("/admin/")) {
+        router.replace("/coach/structure");
+      }
+      if (effectiveRole === "COACH" && pathname?.startsWith("/workouts/structure")) {
+        router.replace("/coach/structure");
+      }
+      if (effectiveRole === "COACH" && pathname?.startsWith("/workouts")) {
+        router.replace("/coach/workouts");
+      }
+      if (effectiveRole === "ATHLETE" && pathname?.startsWith("/workouts")) {
+        router.replace("/athlete/workouts");
+      }
+    }
+  }, [authLoading, hydrated, isAuthRoute, pathname, effectiveRole, roleHome, router, user]);
 
   if (!hydrated) return null;
 
@@ -27,15 +67,18 @@ export const AuthShell: React.FC<{ children: React.ReactNode }> = ({ children })
   return (
     <Screen className="pt-4">
       <AppHeader
-        links={[
-          { label: "Dashboard", href: "/" },
-          { label: "Atleta", href: "/athlete" },
-          { label: "Analisis WOD", href: "/wod-analysis" },
-          { label: "Workouts", href: "/workouts" },
-          { label: "Estructura", href: "/workouts/structure" },
-          { label: "Carga", href: "/profile/training-load" },
-          { label: "Lookups", href: "/lookups" }
-        ]}
+        links={
+          effectiveRole === "COACH"
+            ? [
+                { label: "Atletas", href: "/coach/athletes" },
+                { label: "Workouts", href: "/coach/workouts" },
+                { label: "Estructura", href: "/coach/structure" }
+              ]
+            : [
+                { label: "Atleta", href: "/athlete" },
+                { label: "Mis Workouts", href: "/athlete/workouts" }
+              ]
+        }
         cta={
           user ? (
             <div className="flex items-center gap-3 text-sm text-slate-200">
