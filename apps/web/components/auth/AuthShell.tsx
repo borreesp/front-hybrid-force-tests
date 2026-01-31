@@ -18,6 +18,7 @@ export const AuthShell: React.FC<{ children: React.ReactNode }> = ({ children })
   const isAllowedPath = (path?: string | null) => {
     if (!path) return false;
     if (path.startsWith("/auth")) return true;
+    if (path.startsWith("/ranking")) return true;
     if (effectiveRole === "COACH") {
       return (
         path.startsWith("/coach/athletes") ||
@@ -25,7 +26,7 @@ export const AuthShell: React.FC<{ children: React.ReactNode }> = ({ children })
         path.startsWith("/coach/structure")
       );
     }
-    return path.startsWith("/athlete");
+    return path.startsWith("/athlete") || path.startsWith("/profile");
   };
 
   useEffect(() => {
@@ -72,11 +73,14 @@ export const AuthShell: React.FC<{ children: React.ReactNode }> = ({ children })
             ? [
                 { label: "Atletas", href: "/coach/athletes" },
                 { label: "Workouts", href: "/coach/workouts" },
-                { label: "Estructura", href: "/coach/structure" }
+                { label: "Estructura", href: "/coach/structure" },
+                { label: "Ranking", href: "/ranking" }
               ]
             : [
                 { label: "Atleta", href: "/athlete" },
-                { label: "Mis Workouts", href: "/athlete/workouts" }
+                { label: "Mis Workouts", href: "/athlete/workouts" },
+                { label: "Ranking", href: "/ranking" },
+                { label: "Mi Perfil", href: "/profile" }
               ]
         }
         cta={

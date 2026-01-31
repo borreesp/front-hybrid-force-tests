@@ -6,7 +6,7 @@ import { ProgressTimeline } from "../../components/athlete/ProgressTimeline";
 import { MetricsPRs } from "../../components/athlete/MetricsPRs";
 import { useAthleteProfile } from "../../hooks/useAthlete";
 import { api } from "../../lib/api";
-import type { AthletePrStat, CapacityProfileItem } from "../../lib/types";
+import type { AthletePrStat, CapacityProfileItem, WorkoutExecution } from "../../lib/types";
 import { useAppStore } from "@thrifty/utils";
 import { HelpTooltip } from "../../components/ui/HelpTooltip";
 import { normalizeCapacity, type ComparisonMode, type CapacityKey } from "../../lib/capacityNormalization";
@@ -15,6 +15,7 @@ export default function AthletePage() {
   const { data, loading, error } = useAthleteProfile();
   const [topPrs, setTopPrs] = useState<AthletePrStat[]>([]);
   const [capacityProfile, setCapacityProfile] = useState<CapacityProfileItem[]>([]);
+  const [executions, setExecutions] = useState<WorkoutExecution[]>([]);
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>("level");
   const user = useAppStore((s) => s.user);
 
@@ -23,6 +24,9 @@ export default function AthletePage() {
     api.getAthletePrsTop(user.id, 5)
       .then((res) => setTopPrs(res as AthletePrStat[]))
       .catch(() => setTopPrs([]));
+    api.getWorkoutExecutions()
+      .then((rows) => setExecutions(rows))
+      .catch(() => setExecutions([]));
     if (!data?.capacities?.length) {
       const isPrivileged = user?.role === "COACH" || user?.role === "ADMIN";
       const userIdNum = Number(user.id);
@@ -44,7 +48,8 @@ export default function AthletePage() {
     }
   }, [user?.id, data?.capacities?.length]);
 
-  const hasResults = (data?.prs?.length ?? 0) > 0;
+  const testsSummary = data?.tests;
+  const hasResults = (testsSummary?.tests_total ?? 0) > 0;
   const statusLabel: "verde" | "amarillo" | "rojo" = hasResults ? "verde" : "amarillo";
   const statusMessage = hasResults ? "Progreso activo" : "Sin tests registrados aun";
 
@@ -83,15 +88,15 @@ export default function AthletePage() {
   const metrics = useMemo(() => {
     const xpTotal = data?.career?.xp_total ?? 0;
     const level = data?.career?.level ?? 0;
-    const weeklyStreak = data?.career?.weekly_streak ?? null;
-    const prsCount = data?.prs?.length ?? 0;
+    const weeklyStreak = testsSummary?.weekly_streak ?? data?.career?.weekly_streak ?? null;
+    const testsTotal = testsSummary?.tests_total ?? 0;
     return [
       { label: "XP total", value: Number(xpTotal).toLocaleString("es-ES") },
       { label: "Nivel", value: level ? `${level}` : "-" },
-      { label: "Tests registrados", value: `${prsCount}` },
+      { label: "Tests registrados", value: `${testsTotal}` },
       { label: "Racha semanal", value: weeklyStreak != null ? `${weeklyStreak}` : "-" }
     ];
-  }, [data?.career, data?.prs?.length]);
+  }, [data?.career, testsSummary]);
 
   const prs = useMemo(() => {
     const source = topPrs.length ? topPrs : data?.prs ?? [];
@@ -120,16 +125,23 @@ export default function AthletePage() {
     : 0;
 
   const timelineItems = useMemo(() => {
-    if (!data?.prs?.length) {
+    const formatSeconds = (value?: number | null) => {
+      if (!value || value <= 0) return undefined;
+      const total = Math.round(value);
+      const minutes = Math.floor(total / 60);
+      const seconds = total % 60;
+      return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+    };
+    if (!executions.length) {
       return [{ title: "Sin tests aun", date: "Hoy", type: "Test", delta: "+0 XP" }];
     }
-    return data.prs.slice(-4).map((pr) => ({
-      title: pr.movement ?? pr.pr_type ?? "Test",
-      date: pr.achieved_at ? new Date(pr.achieved_at).toLocaleDateString("es-ES") : "Hoy",
-      type: pr.pr_type ?? "PR",
-      delta: pr.value ? `${pr.value}${pr.unit ? ` ${pr.unit}` : ""}` : undefined
+    return executions.slice(0, 4).map((exec) => ({
+      title: exec.workout?.title ?? "Test",
+      date: exec.executed_at ? new Date(exec.executed_at).toLocaleDateString("es-ES") : "Hoy",
+      type: "Test",
+      delta: formatSeconds(exec.total_time_seconds)
     }));
-  }, [data?.prs]);
+  }, [executions]);
 
   return (
     <div className="space-y-8">

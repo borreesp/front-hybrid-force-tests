@@ -8,14 +8,15 @@ import { ProgressTimeline } from "../../../../components/athlete/ProgressTimelin
 import { MetricsPRs } from "../../../../components/athlete/MetricsPRs";
 import { HelpTooltip } from "../../../../components/ui/HelpTooltip";
 import { api } from "../../../../lib/api";
-import type { AthletePrStat, AthleteStatsOverview, CapacityProfileItem, UserRead } from "../../../../lib/types";
+import type { AthletePrStat, AthleteStatsOverview, CapacityProfileItem, CoachAthleteSummary, WorkoutExecution } from "../../../../lib/types";
 import { normalizeCapacity, type CapacityKey } from "../../../../lib/capacityNormalization";
 
 type SummaryState = {
-  user?: UserRead | null;
+  summary?: CoachAthleteSummary | null;
   capacityProfile: CapacityProfileItem[];
   overview?: AthleteStatsOverview | null;
   prs: AthletePrStat[];
+  executions: WorkoutExecution[];
 };
 
 export default function CoachAthleteDetailPage() {
@@ -23,7 +24,8 @@ export default function CoachAthleteDetailPage() {
   const athleteId = params?.id;
   const [state, setState] = useState<SummaryState>({
     capacityProfile: [],
-    prs: []
+    prs: [],
+    executions: []
   });
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -32,17 +34,19 @@ export default function CoachAthleteDetailPage() {
     if (!athleteId) return;
     setStatus("loading");
     Promise.all([
-      api.getUser(athleteId),
+      api.getCoachAthletesSummary(athleteId).then((rows) => rows[0] ?? null),
       api.getCapacityProfile(athleteId),
       api.getAthletePrs(athleteId),
-      api.getAthleteStatsOverview(athleteId)
+      api.getAthleteStatsOverview(athleteId),
+      api.getAthleteWorkoutExecutions(athleteId, 5).catch(() => [] as WorkoutExecution[])
     ])
-      .then(([user, profile, prs, overview]) => {
+      .then(([summary, profile, prs, overview, executions]) => {
         setState({
-          user,
+          summary,
           capacityProfile: profile.capacities ?? [],
           prs: (prs as AthletePrStat[]) ?? [],
-          overview: overview as AthleteStatsOverview
+          overview: overview as AthleteStatsOverview,
+          executions: (executions as WorkoutExecution[]) ?? []
         });
         setStatus("idle");
       })
@@ -52,8 +56,9 @@ export default function CoachAthleteDetailPage() {
       });
   }, [athleteId]);
 
-  const athleteName = state.user?.name ?? "Atleta";
+  const athleteName = state.summary?.display_name ?? "Atleta";
   const totals = state.overview?.totals;
+  const athleteLevel = state.summary?.level ?? 1;
 
   const metrics = useMemo(() => {
     const out = [
@@ -87,11 +92,11 @@ export default function CoachAthleteDetailPage() {
       value: normalizeCapacity({
         rawScore: map[d.key] ?? 0,
         mode: "level",
-        athleteLevel: 1,
+        athleteLevel,
         capacityKey: d.key
       })
     }));
-  }, [state.capacityProfile]);
+  }, [state.capacityProfile, athleteLevel]);
 
   const prsSummary = useMemo(() => {
     return state.prs.slice(0, 5).map((pr) => ({
@@ -102,18 +107,25 @@ export default function CoachAthleteDetailPage() {
   }, [state.prs]);
 
   const timelineItems = useMemo(() => {
-    if (!state.prs.length) {
+    const formatSeconds = (value?: number | null) => {
+      if (!value || value <= 0) return undefined;
+      const total = Math.round(value);
+      const minutes = Math.floor(total / 60);
+      const seconds = total % 60;
+      return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+    };
+    if (!state.executions.length) {
       return [{ title: "Sin tests aun", date: "Hoy", type: "Test", delta: "+0 XP" }];
     }
-    return state.prs
+    return state.executions
       .slice(0, 5)
-      .map((pr) => ({
-        title: pr.name ?? "Test",
-        date: pr.achieved_at ? new Date(pr.achieved_at).toLocaleDateString("es-ES") : "—",
-        type: pr.type ?? "PR",
-        delta: pr.value ? `${pr.value}${pr.unit ? ` ${pr.unit}` : ""}` : undefined
+      .map((exec) => ({
+        title: exec.workout?.title ?? "Test",
+        date: exec.executed_at ? new Date(exec.executed_at).toLocaleDateString("es-ES") : "-",
+        type: "Test",
+        delta: formatSeconds(exec.total_time_seconds)
       }));
-  }, [state.prs]);
+  }, [state.executions]);
 
   if (status === "loading") {
     return <p className="text-sm text-slate-400">Cargando atleta...</p>;
@@ -127,10 +139,10 @@ export default function CoachAthleteDetailPage() {
     <div className="space-y-8">
       <AthleteHeader
         name={athleteName}
-        level={"Atleta"}
-        xp={totals?.prs_total ?? 0}
+        level={state.summary ? `Nivel ${state.summary.level}` : "Atleta"}
+        xp={state.summary?.xp_total ?? 0}
         state="Seguimiento activo"
-        progress={Math.min(99, (totals?.prs_total ?? 0) * 5)}
+        progress={Math.min(99, Math.max(0, Math.round(state.summary?.progress_pct ?? 0)))}
         statusTone="verde"
       />
 

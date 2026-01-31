@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { Button, Card, Metric, Section } from "@thrifty/ui";
 import { api } from "../lib/api";
-import type { AthleteProfileResponse, CapacityProfileItem } from "../lib/types";
+import type { AthleteProfileResponse, CapacityProfileItem, WorkoutExecution } from "../lib/types";
 import { useAuth } from "../lib/auth-client";
 import { HelpTooltip } from "../components/ui/HelpTooltip";
 
@@ -25,6 +25,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [capacityProfile, setCapacityProfile] = useState<CapacityProfileItem[]>([]);
+  const [executions, setExecutions] = useState<WorkoutExecution[]>([]);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -34,6 +35,7 @@ export default function DashboardPage() {
         const profile = await api.getAthleteProfile();
         if (!mounted) return;
         setData(profile);
+        api.getWorkoutExecutions().then((rows) => mounted && setExecutions(rows)).catch(() => mounted && setExecutions([]));
         if (user) {
           // fallback de capacidades si el perfil viene sin datos
           if (!profile.capacities?.length) {
@@ -74,14 +76,8 @@ export default function DashboardPage() {
       };
     }
 
-    const today = new Date();
-    const tests = data.prs ?? [];
-    const sessions7d = tests.filter((t) => {
-      if (!t.achieved_at) return false;
-      const d = new Date(t.achieved_at);
-      const diff = (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
-      return diff <= 7;
-    }).length;
+    const testsSummary = data.tests;
+    const sessions7d = testsSummary?.tests_7d ?? 0;
 
     const capsSource = data.capacities && data.capacities.length > 0 ? data.capacities : capacityProfile;
     const getCapName = (c: any) => c?.capacity ?? c?.capacity_name ?? c?.capacity_code ?? "Capacidad";
@@ -98,7 +94,7 @@ export default function DashboardPage() {
     return {
       xp: data.career?.xp_total ?? 0,
       sessions7d,
-      testsTotal: tests.length,
+      testsTotal: testsSummary?.tests_total ?? 0,
       topCapacity
     };
   }, [data, capacityProfile]);
@@ -161,8 +157,8 @@ export default function DashboardPage() {
   }, [quick.sessions7d, quick.topCapacity]);
 
   const recentTests = useMemo(() => {
-    return (data?.prs ?? []).slice(0, 3);
-  }, [data?.prs]);
+    return (executions ?? []).slice(0, 3);
+  }, [executions]);
 
   return (
     <div className="space-y-8">
@@ -223,12 +219,12 @@ export default function DashboardPage() {
                 {recentTests.length ? (
                   recentTests.map((test) => (
                     <div
-                      key={`${test.movement ?? test.pr_type ?? "test"}-${test.achieved_at ?? ""}`}
+                      key={`${test.workout?.title ?? "test"}-${test.executed_at ?? ""}`}
                       className="rounded-lg bg-slate-800/70 px-3 py-2"
                     >
-                      <p className="text-sm font-semibold text-white">{test.movement ?? test.pr_type ?? "Test"}</p>
+                      <p className="text-sm font-semibold text-white">{test.workout?.title ?? "Test"}</p>
                       <p className="text-xs text-slate-400">
-                        {test.achieved_at ? new Date(test.achieved_at).toLocaleDateString("es-ES") : "-"}
+                        {test.executed_at ? new Date(test.executed_at).toLocaleDateString("es-ES") : "-"}
                       </p>
                     </div>
                   ))

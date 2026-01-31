@@ -61,6 +61,10 @@ export const helpText: HelpRegistry = {
   "forms.generic": {
     title: "Ayuda de campo",
     body: "Pasa el cursor o enfoca el icono para ver que significa este campo."
+  },
+  "ranking.theoretical": {
+    title: "Cálculo teórico",
+    body: "Se calcula usando el template del WOD (reps y cargas definidas), no lo ejecutado por cada atleta. Se mostrará real cuando existan registros por ejecución."
   }
 };
 

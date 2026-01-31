@@ -178,6 +178,33 @@ export type WorkoutResult = {
   comment?: string | null;
 };
 
+export type WorkoutExecutionBlock = {
+  id: number;
+  workout_block_id?: number | null;
+  time_seconds?: number | null;
+};
+
+export type WorkoutExecutionWorkoutSummary = {
+  id: number;
+  title: string;
+  domain?: string | null;
+  intensity?: string | null;
+  hyrox_transfer?: string | null;
+  hyrox_stations?: { station: string | null; transfer_pct: number | null }[];
+};
+
+export type WorkoutExecution = {
+  id: number;
+  workout_id: number;
+  user_id: number;
+  executed_at: string;
+  total_time_seconds?: number | null;
+  execution_meta?: Record<string, unknown> | null;
+  notes?: string | null;
+  workout: WorkoutExecutionWorkoutSummary;
+  blocks?: WorkoutExecutionBlock[];
+};
+
 export type WorkoutResultWithXp = {
   result: WorkoutResult;
   xp_awarded: number;
@@ -210,6 +237,36 @@ export type UserRead = {
   role: "ATHLETE" | "COACH" | "ADMIN";
 };
 
+export type CoachAthleteSummary = {
+  id: number;
+  display_name: string;
+  email?: string | null;
+  avatar_url?: string | null;
+  xp_total: number;
+  level: number;
+  progress_pct: number;
+  last_test_at?: string | null;
+  tests_total: number;
+};
+
+export type UserSelfProfile = {
+  id: number;
+  name: string;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  date_of_birth?: string | null;
+};
+
+export type UserSelfProfileUpdate = {
+  display_name?: string | null;
+  avatar_url?: string | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  date_of_birth?: string | null;
+};
+
 export type AuthResponse = {
   user: AuthUser;
   tokens?: {
@@ -231,6 +288,13 @@ export type CareerSnapshot = {
   xp_to_next?: number | null;
   weekly_streak?: number | null;
   updated_at: string;
+};
+
+export type TestsSummary = {
+  tests_total: number;
+  tests_7d: number;
+  last_test_at?: string | null;
+  weekly_streak?: number | null;
 };
 
 export type AthleteCapacity = {
@@ -258,6 +322,7 @@ export type AthleteProfileResponse = {
   capacities: AthleteCapacity[];
   skills: AthleteSkill[];
   prs: AthletePR[];
+  tests: TestsSummary;
 };
 
 export type Equipment = {
@@ -310,4 +375,31 @@ export type AthleteStatsOverview = {
     total_cals?: number | null;
     total_seconds?: number | null;
   };
+  tests?: TestsSummary;
+};
+
+export type RankingMetric = "xp" | "movements" | "kg" | "tests" | "prs";
+export type RankingDashboardMetric = RankingMetric | "best_time";
+export type RankingPeriod = "day" | "week" | "month" | "year";
+
+export type RankingEntry = {
+  rank: number;
+  user_id: number;
+  name: string;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  value: number;
+  previous_value?: number | null;
+  trend: "up" | "down" | "same";
+};
+
+export type RankingSummary = Partial<Record<RankingDashboardMetric, RankingEntry[]>>;
+
+export type RankingSummaryMetadata = {
+  calculation_mode: "theoretical" | "real";
+};
+
+export type RankingSummaryResponse = {
+  data: RankingSummary;
+  metadata: RankingSummaryMetadata;
 };

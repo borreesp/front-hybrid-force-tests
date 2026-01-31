@@ -14,7 +14,16 @@ import {
   WorkoutResultWithXp,
   WorkoutCreatePayload,
   ApplyWorkoutImpactResponse,
-  UserRead
+  UserRead,
+  UserSelfProfile,
+  UserSelfProfileUpdate,
+  WorkoutExecution,
+  CoachAthleteSummary,
+  RankingEntry,
+  RankingSummary,
+  RankingSummaryResponse,
+  RankingMetric,
+  RankingPeriod
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -104,6 +113,29 @@ export const api = {
 
   async getWorkoutResults(id: string | number): Promise<WorkoutResult[]> {
     return fetchJson<WorkoutResult[]>(`/workout-results/workout/${id}`);
+  },
+
+  async getWorkoutExecutions(): Promise<WorkoutExecution[]> {
+    return fetchJson<WorkoutExecution[]>("/athlete/workout-executions");
+  },
+
+  async getAthleteWorkoutExecutions(athleteId: string | number, limit = 10): Promise<WorkoutExecution[]> {
+    return fetchJson<WorkoutExecution[]>(`/athlete/${athleteId}/workout-executions?limit=${limit}`);
+  },
+
+  async getCoachAthletesSummary(athleteId?: string | number): Promise<CoachAthleteSummary[]> {
+    const query = athleteId ? `?athlete_id=${athleteId}` : "";
+    return fetchJson<CoachAthleteSummary[]>(`/coach/athletes/summary${query}`);
+  },
+
+  async getWorkoutExecution(id: string | number): Promise<WorkoutExecution> {
+    return fetchJson<WorkoutExecution>(`/athlete/workout-executions/${id}`);
+  },
+
+  async repeatWorkout(workoutId: string | number): Promise<WorkoutExecution> {
+    return fetchJson<WorkoutExecution>(`/athlete/workouts/${workoutId}/repeat`, {
+      method: "POST"
+    });
   },
 
   async getWorkoutVersions(id: string | number): Promise<Workout[]> {
@@ -230,11 +262,34 @@ export const api = {
     return fetchJson(`/athlete/${athleteId}/stats/overview`);
   },
 
+  async getRanking(
+    metric: RankingMetric,
+    period: RankingPeriod,
+    limit = 50
+  ): Promise<RankingEntry[]> {
+    return fetchJson<RankingEntry[]>(`/ranking/?metric=${metric}&period=${period}&limit=${limit}`);
+  },
+
+  async getRankingSummary(period: RankingPeriod, limit = 10): Promise<RankingSummaryResponse> {
+    return fetchJson<RankingSummaryResponse>(`/ranking/summary?period=${period}&limit=${limit}`);
+  },
+
   async getUsers(): Promise<UserRead[]> {
     return fetchJson<UserRead[]>("/users");
   },
 
   async getUser(userId: string | number): Promise<UserRead> {
     return fetchJson<UserRead>(`/users/${userId}`);
+  },
+
+  async getMyProfile(): Promise<UserSelfProfile> {
+    return fetchJson<UserSelfProfile>("/me/profile");
+  },
+
+  async updateMyProfile(payload: UserSelfProfileUpdate): Promise<UserSelfProfile> {
+    return fetchJson<UserSelfProfile>("/me/profile", {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    });
   }
 };

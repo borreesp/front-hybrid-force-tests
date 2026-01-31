@@ -41,12 +41,12 @@ const isTime = (pr: PRDetail) => {
   return unit.includes("sec") || unit.includes("s") || unit.includes("min") || type.includes("time");
 };
 
-const dedupeMaxByName = (prs: PRDetail[]) => {
+const dedupeBestByName = (prs: PRDetail[], isBetter: (next: PRDetail, current: PRDetail) => boolean) => {
   const map = new Map<string, PRDetail>();
   for (const pr of prs) {
     const key = pr.name.toLowerCase();
     const current = map.get(key);
-    if (!current || pr.value > current.value) {
+    if (!current || isBetter(pr, current)) {
       map.set(key, pr);
     }
   }
@@ -59,9 +59,15 @@ export const MetricsPRs: React.FC<{
   allPrs?: PRDetail[];
   onViewMorePrs?: () => void;
 }> = ({ metrics, prs, allPrs = [], onViewMorePrs }) => {
-  const kgPrs = dedupeMaxByName(allPrs.filter(isKg));
-  const timePrs = dedupeMaxByName(allPrs.filter((pr) => !isKg(pr) && isTime(pr)));
-  const scorePrs = dedupeMaxByName(allPrs.filter((pr) => !isKg(pr) && !isTime(pr)));
+  const kgPrs = dedupeBestByName(allPrs.filter(isKg), (next, current) => next.value > current.value);
+  const timePrs = dedupeBestByName(
+    allPrs.filter((pr) => !isKg(pr) && isTime(pr)),
+    (next, current) => next.value < current.value
+  );
+  const scorePrs = dedupeBestByName(
+    allPrs.filter((pr) => !isKg(pr) && !isTime(pr)),
+    (next, current) => next.value > current.value
+  );
 
   return (
     <div className="grid gap-4 lg:grid-cols-3">
