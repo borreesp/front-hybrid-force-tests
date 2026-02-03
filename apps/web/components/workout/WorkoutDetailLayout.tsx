@@ -1,5 +1,6 @@
-
-"use client";
+
+
+"use cl
 import React, { useEffect, useMemo } from "react";
 import { Button, Card, Section } from "@thrifty/ui";
 import { BarLevelChart } from "../charts/BarLevelChart";
@@ -469,8 +470,10 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
           <Card className={panelCard}>
             <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Pacing recomendado</p>
             <p className="mt-2 text-sm text-white">{pacingCopy?.tip ?? "Mantener ritmo estable, controlando work/rest indicado."}</p>
-            <p className="text-xs text-slate-400">{pacingCopy?.range ?? workout.pacing_detail ?? ""}</p>
-            </Card>
+            <p className="text-xs text-slate-400">{pacingCopy?.range ?? workout.pacing_detail ?? ""}</p>
+
+            </Card>
+
           </div>
       </Section>
 
@@ -505,8 +508,10 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
           <Card className={panelCard}>
             <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Duracion / volumen</p>
             <p className="mt-2 text-xl font-semibold text-white">{workout.volume_total ?? "-"}</p>
-            <p className="text-[11px] text-slate-500">Avg time: {formatSeconds(workout.avg_time_seconds)}</p>
-            </Card>
+            <p className="text-[11px] text-slate-500">Avg time: {formatSeconds(workout.avg_time_seconds)}</p>
+
+            </Card>
+
           </div>
       </Section>
 
@@ -531,8 +536,10 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
             <p className="text-xs uppercase tracking-[0.18em] text-slate-400">RX, scaled y AI</p>
             <p className="mt-2 text-sm text-slate-200">RX: {workout.rx_variant ?? "-"}</p>
             <p className="mt-2 text-sm text-slate-200">Scaled: {workout.scaled_variant ?? "-"}</p>
-            <p className="mt-3 text-[12px] text-slate-400">AI: {workout.ai_observation ?? "Sin nota AI"}</p>
-            </Card>
+            <p className="mt-3 text-[12px] text-slate-400">AI: {workout.ai_observation ?? "Sin nota AI"}</p>
+
+            </Card>
+
           </div>
         {analysis && (
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
@@ -556,8 +563,10 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
             <Card className={panelCard}>
               <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Pacing recomendado</p>
               <p className="mt-2 text-sm text-white">{analysis.pacing.tip}</p>
-              <p className="text-xs text-slate-400">{analysis.pacing.range}</p>
-            </Card>
+              <p className="text-xs text-slate-400">{analysis.pacing.range}</p>
+
+            </Card>
+
           </div>
         )}
       </Section>
@@ -742,8 +751,10 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
             <p className="mt-2 text-3xl font-semibold text-white">
               {mode === "analysis" ? analysis?.pacing?.range ?? estimatedForUser?.time_range ?? "-" : estimatedForUser ? estimatedForUser.time_range : "-"}
             </p>
-            <p className="text-xs text-slate-500">Comparado con niveles cargados</p>
-            </Card>
+            <p className="text-xs text-slate-500">Comparado con niveles cargados</p>
+
+            </Card>
+
           </div>
         <div className="mt-6 grid gap-4 lg:grid-cols-5">
           <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-gradient-to-br from-slate-950/70 via-slate-950/50 to-slate-900/50 p-3 shadow-[0_10px_30px_rgba(0,0,0,0.45)]">
@@ -770,7 +781,8 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
             </table>
           </div>
         </div>
-      </Section>
+      </Section>
+
       {showComparative && (
         <Section
           title="Comparativa personal"
@@ -807,8 +819,10 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
                 </Card>
                 <Card className={panelCard}>
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Pacing sugerido</p>
-                  <p className="mt-2 text-sm text-white">{analysis?.pacing?.tip ?? "Mantener ritmo estable, controlando work/rest indicado."}</p>
-            </Card>
+                  <p className="mt-2 text-sm text-white">{analysis?.pacing?.tip ?? "Mantener ritmo estable, controlando work/rest indicado."}</p>
+
+            </Card>
+
           </div>
               <div className="grid gap-4 lg:grid-cols-2">
                 <Card className={panelCard}>
@@ -887,8 +901,10 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
                 {lastUserResult
                   ? `Ultimo intento: ${formatSeconds(lastUserResult.time_seconds)} (diff ${lastUserResult.difficulty ?? "-"})`
                   : "Registra tu primer intento para comparar pacing y HR en futuras iteraciones."}
-              </p>
-            </Card>
+              </p>
+
+            </Card>
+
           </div>
         </Section>
       )}
@@ -958,10 +974,17 @@ export const WorkoutDetailLayout: React.FC<Props> = ({
   );
 };
 
-export default WorkoutDetailLayout;
-
-
-
-
-
-
+export default WorkoutDetailLayout;
+
+
+
+
+
+
+
+
+
+
+
+
+

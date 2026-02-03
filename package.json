@@ -14,10 +14,12 @@
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {
-    "turbo": "latest",
-    "typescript": "^5.9.3",
     "@types/react": "^18.3.27",
-    "@types/react-dom": "^18.3.7"
+    "@types/react-dom": "^18.3.7",
+    "baseline-browser-mapping": "^2.9.19",
+    "expo-doctor": "^1.17.14",
+    "turbo": "latest",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=18.x"

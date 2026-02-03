@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Text, PressableProps } from "react-native";
+import { Pressable, Text, PressableProps, StyleSheet } from "react-native";
 import { cn } from "@thrifty/utils";
 
 type ButtonProps = PressableProps & {
@@ -12,8 +12,8 @@ const baseStyles =
   "flex flex-row items-center justify-center rounded-lg font-semibold active:scale-[0.99]";
 
 const variantStyles: Record<NonNullable<ButtonProps["variant"]>, string> = {
-  primary: "bg-brand px-4 py-3",
-  secondary: "bg-surface-alt px-4 py-3 border border-white/10",
+  primary: "bg-cyan-500 px-4 py-3", // Cyan brillante - visible en dark theme
+  secondary: "bg-slate-800 px-4 py-3 border border-white/10",
   ghost: "bg-transparent px-4 py-3 border border-white/20"
 };
 
@@ -37,10 +37,18 @@ export const Button: React.FC<ButtonProps> = ({
       {...props}
     >
       {typeof children === "string" || label ? (
-        <Text className="text-white font-semibold">{label ?? children}</Text>
+        <Text className="text-white font-bold text-base" style={styles.text}>
+          {label ?? children}
+        </Text>
       ) : (
         children
       )}
     </Pressable>
   );
 };
+
+const styles = StyleSheet.create({
+  text: {
+    color: "#ffffff"
+  }
+});

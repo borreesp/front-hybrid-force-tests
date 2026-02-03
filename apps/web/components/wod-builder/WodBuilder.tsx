@@ -9,7 +9,7 @@
 /* =================================================================================================
  * IMPORTS
  * ================================================================================================= */
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@thrifty/utils";

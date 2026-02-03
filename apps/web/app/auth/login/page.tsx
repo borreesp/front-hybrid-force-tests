@@ -1,6 +1,6 @@
 "use client";
 import { Button, Card, Input, Section } from "@thrifty/ui";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useAuth } from "../../../lib/auth-client";
 
 export default function LoginPage() {

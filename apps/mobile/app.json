@@ -4,11 +4,17 @@
     "slug": "hybridforce-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
+    "userInterfaceStyle": "dark",
     "scheme": "hybridforce",
+    "jsEngine": "hermes",
     "experiments": {
       "tsconfigPaths": true
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      "expo-asset",
+      "expo-font"
+    ],
     "extra": {}
   }
 }

@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Route } from "next";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { WorkoutDetailLayout } from "../../../components/workout/WorkoutDetailLayout";

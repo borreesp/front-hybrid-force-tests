@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, Section } from "@thrifty/ui";
 import { api } from "../../lib/api";
 import type { UserSelfProfile, UserSelfProfileUpdate } from "../../lib/types";

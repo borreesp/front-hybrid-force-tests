@@ -1,6 +1,6 @@
 "use client";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { AppHeader, Button, Screen } from "@thrifty/ui";
 import { useAuth } from "../../lib/auth-client";
 

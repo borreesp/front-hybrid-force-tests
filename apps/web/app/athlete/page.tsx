@@ -1,5 +1,5 @@
 ﻿"use client";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AthleteHeader } from "../../components/athlete/AthleteHeader";
 import { AthleteRadar } from "../../components/athlete/AthleteRadar";
 import { ProgressTimeline } from "../../components/athlete/ProgressTimeline";

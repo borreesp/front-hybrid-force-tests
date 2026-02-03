@@ -20,7 +20,7 @@ export const Card: React.FC<CardProps> = ({
   return (
     <View
       className={cn(
-        "rounded-xl border border-white/10 bg-surface/80 shadow-soft p-4",
+        "rounded-xl border border-white/10 bg-slate-800/90 p-4",
         className
       )}
     >

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 
 type ImpactMap = Record<string, number | undefined>;
 type ProfileMap = Record<string, number | undefined>;

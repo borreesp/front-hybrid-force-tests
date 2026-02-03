@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, Button } from "@thrifty/ui";
 
 type ImpactMap = Record<string, number | undefined>;

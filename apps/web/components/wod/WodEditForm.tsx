@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button, Card, Input } from "@thrifty/ui";
 import { EditableWodBlock as EditableCard } from "./EditableWodBlock";

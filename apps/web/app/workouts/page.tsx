@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, Section } from "@thrifty/ui";
 import { api } from "../../lib/api";
 import type { Workout, WorkoutExecution } from "../../lib/types";

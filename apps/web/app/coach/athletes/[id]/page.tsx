@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { AthleteHeader } from "../../../../components/athlete/AthleteHeader";
 import { AthleteRadar } from "../../../../components/athlete/AthleteRadar";

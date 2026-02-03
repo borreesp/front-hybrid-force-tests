@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Section } from "@thrifty/ui";
 import { api } from "../../lib/api";
 import type { RankingDashboardMetric, RankingEntry, RankingPeriod, RankingSummary } from "../../lib/types";

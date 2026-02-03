@@ -26,7 +26,7 @@ export const Metric: React.FC<MetricProps> = ({
   return (
     <View
       className={cn(
-        "rounded-lg border border-white/10 bg-surface-alt/70 px-4 py-3",
+        "rounded-lg border border-white/10 bg-slate-700/50 px-4 py-3",
         className
       )}
     >
