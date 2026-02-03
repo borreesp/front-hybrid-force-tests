@@ -25,15 +25,20 @@ type ClientConfig = {
 let config: ClientConfig | null = null;
 let refreshPromise: Promise<TokenPayload> | null = null;
 let logoutTriggered = false;
+let baseUrlOverride: string | undefined;
 
 export function configureClient(next: ClientConfig) {
   config = next;
 }
 
+export function setBaseUrl(next?: string) {
+  baseUrlOverride = next ? String(next).replace(/\/$/, "") : undefined;
+}
+
 export function getBaseUrl() {
   const envUrl =
     process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL;
-  const base = config?.baseUrl ?? envUrl;
+  const base = baseUrlOverride ?? config?.baseUrl ?? envUrl;
   if (!base || String(base).trim() === "") {
     throw makeError(undefined, "API base URL not configured");
   }

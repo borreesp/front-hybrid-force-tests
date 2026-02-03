@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Card, Section } from "@thrifty/ui";
@@ -33,7 +33,7 @@ export default function ExecutionDetailScreen() {
     }
   }, [executionId]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     load();
   }, [load]);
 

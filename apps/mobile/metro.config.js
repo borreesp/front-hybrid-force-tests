@@ -1,7 +1,20 @@
 const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
 const path = require("path");
-const exclusionList = require("metro-config/src/defaults/exclusionList");
+const exclusionList = (additionalExclusions = []) => {
+  const list = [/\/__tests__\/.*/];
+  const escapeRegExp = (pattern) => {
+    if (pattern instanceof RegExp) {
+      return pattern.source.replace(/\/|\\\//g, "\\" + path.sep);
+    }
+    if (typeof pattern === "string") {
+      const escaped = pattern.replace(/[\-\[\]\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+      return escaped.replaceAll("/", "\\" + path.sep);
+    }
+    throw new Error(`Expected exclusionList to be called with RegExp or string, got: ${typeof pattern}`);
+  };
+  return new RegExp("(" + additionalExclusions.concat(list).map(escapeRegExp).join("|") + ")$");
+};
 
 const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, "../..");
@@ -36,11 +49,13 @@ config.resolver = {
   ],
   // Resolver explícito para paquetes del workspace
   extraNodeModules: {
+    react: path.resolve(projectRoot, "node_modules/react"),
+    "react-native": path.resolve(projectRoot, "node_modules/react-native"),
     "@thrifty/core": path.resolve(workspaceRoot, "packages/core"),
     "@thrifty/ui": path.resolve(workspaceRoot, "packages/ui"),
     "@thrifty/utils": path.resolve(workspaceRoot, "packages/utils"),
   },
-  sourceExts: ["js", "jsx", "json", "ts", "tsx"],
+  // Keep default sourceExts (includes mjs/cjs/css). Overriding breaks Expo SDK 54.
 };
 
 module.exports = withNativeWind(config, { input: "./global.css" });
