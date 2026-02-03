@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Text, PressableProps, StyleSheet } from "react-native";
+import { Pressable, Text, PressableProps } from "react-native";
 import { cn } from "@thrifty/utils";
 
 type ButtonProps = PressableProps & {
@@ -8,19 +8,26 @@ type ButtonProps = PressableProps & {
   label?: string;
 };
 
-const baseStyles =
-  "flex flex-row items-center justify-center rounded-lg font-semibold active:scale-[0.99]";
-
-const variantStyles: Record<NonNullable<ButtonProps["variant"]>, string> = {
-  primary: "bg-cyan-500 px-4 py-3", // Cyan brillante - visible en dark theme
-  secondary: "bg-slate-800 px-4 py-3 border border-white/10",
-  ghost: "bg-transparent px-4 py-3 border border-white/20"
+const getVariantClasses = (variant: ButtonProps["variant"]) => {
+  switch (variant) {
+    case "secondary":
+      return "bg-slate-800 border border-white/10";
+    case "ghost":
+      return "bg-transparent border border-white/20";
+    default:
+      return "bg-cyan-500";
+  }
 };
 
-const sizeStyles: Record<NonNullable<ButtonProps["size"]>, string> = {
-  sm: "px-3 py-2",
-  md: "px-4 py-3",
-  lg: "px-5 py-3"
+const getSizeClasses = (size: ButtonProps["size"]) => {
+  switch (size) {
+    case "sm":
+      return "px-3 py-2";
+    case "lg":
+      return "px-5 py-4";
+    default:
+      return "px-4 py-3";
+  }
 };
 
 export const Button: React.FC<ButtonProps> = ({
@@ -31,13 +38,25 @@ export const Button: React.FC<ButtonProps> = ({
   children,
   ...props
 }) => {
+  const finalClassName = cn(
+    "flex flex-row items-center justify-center rounded-lg",
+    getVariantClasses(variant),
+    getSizeClasses(size),
+    className
+  );
+
+  // Debug: log className to verify NativeWind is working
+  if (__DEV__) {
+    console.log("[Button] className:", finalClassName, "variant:", variant);
+  }
+
   return (
     <Pressable
-      className={cn(baseStyles, variantStyles[variant], sizeStyles[size], className)}
+      className={finalClassName}
       {...props}
     >
       {typeof children === "string" || label ? (
-        <Text className="text-white font-bold text-base" style={styles.text}>
+        <Text className="text-white font-bold text-base">
           {label ?? children}
         </Text>
       ) : (
@@ -47,8 +66,3 @@ export const Button: React.FC<ButtonProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  text: {
-    color: "#ffffff"
-  }
-});

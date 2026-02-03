@@ -16,3 +16,4 @@ export const Screen: React.FC<ScreenProps> = ({ children, className }) => {
     </SafeAreaView>
   );
 };
+

@@ -1,8 +1,14 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
+      "react": [
+        "./node_modules/@types/react/index.d.ts"
+      ],
+      "react/*": [
+        "./node_modules/@types/react/*"
+      ],
       "@thrifty/ui": [
         "../../packages/ui/src/index.native.ts"
       ],
@@ -19,8 +25,10 @@
         "../../packages/config/index.ts"
       ]
     },
-    "jsx": "react-native",
-    "jsxImportSource": "nativewind"
+    "jsx": "react-jsx",
+    "jsxImportSource": "nativewind",
+    "types": ["react"],
+    "typeRoots": ["./node_modules/@types"]
   },
   "include": [
     "**/*.ts",

@@ -18,8 +18,6 @@ export default function TabsLayout() {
   return (
     <SafeAreaView className="flex-1 bg-surface">
       <View className="flex-1 bg-surface">
-        {/* App Header */}
-        <AppHeader />
 
         {/* Tabs Navigation */}
         <Tabs

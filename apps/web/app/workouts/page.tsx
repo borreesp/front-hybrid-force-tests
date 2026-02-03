@@ -207,7 +207,7 @@ export default function WorkoutsPage() {
 
       {activeTab === "available" && (
         <>
-          <Section title="Workouts" description="Todos los WODs disponibles para tu perfil HybridForce.">
+          <Section>
             <div className="grid gap-3 md:grid-cols-4">
               <input
                 placeholder="Buscador"

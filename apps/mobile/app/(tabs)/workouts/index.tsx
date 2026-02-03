@@ -205,7 +205,7 @@ export default function WorkoutsScreen() {
 
         {activeTab === "available" && (
           <>
-            <Section title="Workouts" description="Todos los WODs disponibles para tu perfil.">
+            <Section>
               <TextInput
                 placeholder="Buscador"
                 placeholderTextColor="#64748b"
@@ -284,7 +284,7 @@ export default function WorkoutsScreen() {
 
         {activeTab === "completed" && (
           <>
-            <Section title="Workouts realizados" description="Historico inmutable de tus ejecuciones completadas.">
+            <Section>
               <View className="flex-row flex-wrap gap-2">
                 {historyRanges.map((range) => (
                   <Pressable key={range.key} onPress={() => setHistoryRange(range.key)}>

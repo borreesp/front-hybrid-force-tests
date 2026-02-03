@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Button, Card, Section } from "@thrifty/ui";
@@ -48,7 +48,7 @@ export default function WorkoutDetailScreen() {
     }
   }, [workoutId]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     load();
   }, [load]);
 

@@ -38,3 +38,4 @@ export const Metric: React.FC<MetricProps> = ({
     </View>
   );
 };
+
