@@ -13,14 +13,7 @@ import { Avatar } from "../../src/components/Avatar";
 import { ErrorState } from "../../src/components/State";
 import { Skeleton } from "../../src/components/Skeleton";
 import { useAuth } from "../../src/hooks/useAuth";
-
-const getInitials = (value: string) => {
-  const cleaned = value.trim();
-  if (!cleaned) return "??";
-  const parts = cleaned.split(" ").filter(Boolean);
-  const letters = parts.slice(0, 2).map((part) => part[0]);
-  return letters.join("").toUpperCase();
-};
+import { getInitials } from "../../src/utils/initials";
 
 type FormState = {
   displayName: string;

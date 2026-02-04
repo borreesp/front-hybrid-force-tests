@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Image, Text, View } from "react-native";
 import { cn } from "@thrifty/utils";
+import { getInitials } from "../utils/initials";
 
 type AvatarProps = {
   uri?: string | null;
@@ -9,16 +10,8 @@ type AvatarProps = {
   className?: string;
 };
 
-const initialsFor = (name?: string | null) => {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-};
-
 export const Avatar: React.FC<AvatarProps> = ({ uri, name, size = 48, className }) => {
-  const initials = initialsFor(name);
+  const initials = getInitials(name);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
