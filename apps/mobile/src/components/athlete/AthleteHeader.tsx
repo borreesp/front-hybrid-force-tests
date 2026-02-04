@@ -1,6 +1,7 @@
 import { Text, View } from "react-native";
 import { Card } from "@thrifty/ui";
 import { Avatar } from "../Avatar";
+import { CircularProgress } from "../CircularProgress";
 import { formatNumber, clamp } from "../../utils/format";
 
 type AthleteHeaderProps = {
@@ -14,10 +15,10 @@ type AthleteHeaderProps = {
   progressPct?: number | null;
 };
 
-const statusStyles: Record<NonNullable<AthleteHeaderProps["statusTone"]>, string> = {
-  emerald: "border-emerald-400/40 bg-emerald-500/10",
-  amber: "border-amber-400/40 bg-amber-500/10",
-  slate: "border-white/10 bg-slate-800/60",
+const statusTextStyles: Record<NonNullable<AthleteHeaderProps["statusTone"]>, string> = {
+  emerald: "text-emerald-300",
+  amber: "text-amber-300",
+  slate: "text-slate-400",
 };
 
 export const AthleteHeader: React.FC<AthleteHeaderProps> = ({
@@ -32,7 +33,7 @@ export const AthleteHeader: React.FC<AthleteHeaderProps> = ({
 }) => {
   const safeProgress = clamp(Number(progressPct ?? 0), 0, 100);
   const levelLabel = level != null ? `Nivel ${level}` : "Nivel 0";
-  const teamLabel = team && team.trim().length ? team : "Sin equipo";
+  const teamLabel = team && team.trim().length ? team : null;
 
   return (
     <Card className="bg-slate-900/80">
@@ -43,37 +44,25 @@ export const AthleteHeader: React.FC<AthleteHeaderProps> = ({
           <Text className="text-2xl font-semibold text-white">{name}</Text>
           <Text className="text-sm text-slate-300">
             {levelLabel}
-            {xpTotal != null ? ` · ${formatNumber(xpTotal)} XP` : ""}
+            {xpTotal != null ? ` - ${formatNumber(xpTotal)} XP` : ""}
           </Text>
+          {teamLabel ? (
+            <Text className="mt-1 text-xs text-slate-400">Equipo: {teamLabel}</Text>
+          ) : null}
         </View>
-        {status ? (
-          <View className={`rounded-full border px-3 py-1 ${statusStyles[statusTone]}`}>
-            <Text className="text-xs text-slate-100">Estado: {status}</Text>
-          </View>
-        ) : null}
-      </View>
-
-      <View className="mt-4 flex-row gap-3">
-        <View className="flex-1 rounded-lg bg-white/5 px-3 py-2">
-          <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-            Nivel actual
-          </Text>
-          <Text className="mt-1 text-sm font-semibold text-white">{levelLabel}</Text>
+        <View className="items-center">
+          <CircularProgress
+            value={safeProgress}
+            size={76}
+            strokeWidth={6}
+            showValue
+          />
+          {status ? (
+            <Text className={`mt-2 text-[11px] ${statusTextStyles[statusTone]}`}>
+              {status}
+            </Text>
+          ) : null}
         </View>
-        <View className="flex-1 rounded-lg bg-white/5 px-3 py-2">
-          <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-            Equipo
-          </Text>
-          <Text className="mt-1 text-sm font-semibold text-white">{teamLabel}</Text>
-        </View>
-      </View>
-
-      <View className="mt-4">
-        <Text className="text-xs text-slate-400">Al siguiente nivel</Text>
-        <View className="mt-2 h-2 w-full rounded-full bg-slate-800">
-          <View className="h-2 rounded-full bg-cyan-400" style={{ width: `${safeProgress}%` }} />
-        </View>
-        <Text className="mt-1 text-xs text-slate-400">{safeProgress}% completado</Text>
       </View>
     </Card>
   );

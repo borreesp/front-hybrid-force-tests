@@ -151,6 +151,23 @@ export const api = {
     });
   },
 
+  async applyTest(
+    workoutId: string | number,
+    payload: {
+      test_code?: string;
+      test_inputs?: Record<string, number | string>;
+      total_time_sec?: number;
+      score?: number;
+      reps?: number;
+      notes?: string;
+    }
+  ): Promise<WorkoutExecution> {
+    return fetchJson<WorkoutExecution>(`/athlete/workouts/${workoutId}/apply-test`, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  },
+
   async getWorkoutVersions(id: string | number): Promise<Workout[]> {
     return fetchJson<Workout[]>(`/workouts/${id}/versions`);
   },
@@ -241,11 +258,38 @@ export const api = {
       difficulty?: number;
       rating?: number;
       comment?: string;
+      test_code?: string;
+      test_inputs?: Record<string, number | string>;
     }
   ): Promise<WorkoutResultWithXp> {
     return fetchJson<WorkoutResultWithXp>(`/athlete/workouts/${workoutId}/result`, {
       method: "POST",
       body: JSON.stringify(payload)
+    });
+  },
+
+  async submitTestResult(
+    workoutId: string | number,
+    payload: {
+      test_code: string;
+      test_inputs: Record<string, number>;
+      total_time_sec?: number;
+      difficulty?: number;
+      rating?: number;
+      comment?: string;
+    }
+  ): Promise<WorkoutResultWithXp> {
+    return fetchJson<WorkoutResultWithXp>(`/athlete/workouts/${workoutId}/result`, {
+      method: "POST",
+      body: JSON.stringify({
+        method: "total",
+        total_time_sec: payload.total_time_sec ?? 600,
+        difficulty: payload.difficulty,
+        rating: payload.rating,
+        comment: payload.comment,
+        test_code: payload.test_code,
+        test_inputs: payload.test_inputs,
+      }),
     });
   },
 

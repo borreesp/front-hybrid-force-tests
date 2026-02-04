@@ -1,18 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Card, Section } from "@thrifty/ui";
 import { api } from "../../../src/core/api";
 import type { Workout, WorkoutExecution } from "../../../src/core/types";
 import { ErrorState, EmptyState } from "../../../src/components/State";
 import { Skeleton } from "../../../src/components/Skeleton";
-import { formatDate, formatNumber, formatTimeSeconds } from "../../../src/utils/format";
-
-const statTone = {
-  cardio: "text-cyan-200",
-  strength: "text-orange-200",
-  hybrid: "text-indigo-200"
-} as const;
+import { formatDate, formatTimeSeconds } from "../../../src/utils/format";
 
 const historyRanges: { key: "2w" | "1m" | "all"; label: string }[] = [
   { key: "2w", label: "Ultimas 2 semanas" },
@@ -39,8 +33,9 @@ export default function WorkoutsScreen() {
     tabParam === "completed" ? "completed" : "available"
   );
 
-  useEffect(() => {
+  const loadWorkouts = useCallback(() => {
     setStatus("loading");
+    setError(null);
     api
       .getWorkouts()
       .then((data) => {
@@ -48,7 +43,7 @@ export default function WorkoutsScreen() {
         setStatus("idle");
       })
       .catch((err: any) => {
-        setError(err?.message ?? "No pudimos cargar workouts.");
+        setError(err?.message ?? "No pudimos cargar los tests.");
         setStatus("error");
       });
   }, []);
@@ -58,8 +53,9 @@ export default function WorkoutsScreen() {
     setActiveTab(tabParam === "completed" ? "completed" : "available");
   }, [tabParam]);
 
-  useEffect(() => {
+  const loadExecutions = useCallback(() => {
     setExecStatus("loading");
+    setExecError(null);
     api
       .getWorkoutExecutions()
       .then((data) => {
@@ -76,6 +72,13 @@ export default function WorkoutsScreen() {
         setExecStatus("error");
       });
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadWorkouts();
+      loadExecutions();
+    }, [loadWorkouts, loadExecutions])
+  );
 
   const uniqueStrings = (items: (string | null | undefined)[]) => {
     const seen = new Set<string>();
@@ -103,15 +106,18 @@ export default function WorkoutsScreen() {
     return "Resultado no disponible";
   };
 
-  const domains = useMemo(() => uniqueStrings(workouts.map((w) => w.domain)), [workouts]);
-  const intensities = useMemo(() => uniqueStrings(workouts.map((w) => w.intensity)), [workouts]);
+  // Filter to show only tests (wod_type === "TEST")
+  const tests = useMemo(() => workouts.filter((w) => w.wod_type === "TEST"), [workouts]);
+
+  const domains = useMemo(() => uniqueStrings(tests.map((w) => w.domain)), [tests]);
+  const intensities = useMemo(() => uniqueStrings(tests.map((w) => w.intensity)), [tests]);
   const hyroxStations = useMemo(
-    () => uniqueStrings(workouts.flatMap((w) => w.hyrox_stations?.map((h) => h.station) ?? [])),
-    [workouts]
+    () => uniqueStrings(tests.flatMap((w) => w.hyrox_stations?.map((h) => h.station) ?? [])),
+    [tests]
   );
 
   const filtered = useMemo(() => {
-    return workouts
+    return tests
       .filter((workout) => (filters.domain ? workout.domain === filters.domain : true))
       .filter((workout) => (filters.intensity ? workout.intensity === filters.intensity : true))
       .filter((workout) =>
@@ -121,7 +127,7 @@ export default function WorkoutsScreen() {
         search ? `${workout.title} ${workout.description}`.toLowerCase().includes(search.toLowerCase()) : true
       )
       .sort((a, b) => (b.avg_rating ?? 0) - (a.avg_rating ?? 0));
-  }, [workouts, filters, search]);
+  }, [tests, filters, search]);
 
   const completedFiltered = useMemo(() => {
     if (historyRange === "all") return executions;
@@ -190,7 +196,7 @@ export default function WorkoutsScreen() {
             onPress={() => setActiveTab("available")}
           >
             <Text className={`text-center text-sm ${activeTab === "available" ? "text-white" : "text-slate-400"}`}>
-              Disponibles ({workouts.length})
+              Disponibles ({tests.length})
             </Text>
           </Pressable>
           <Pressable
@@ -233,47 +239,31 @@ export default function WorkoutsScreen() {
             ) : null}
 
             {filtered.length === 0 && status === "idle" ? (
-              <EmptyState title="Sin resultados" description="No se encontraron WODs con estos filtros." />
+              <EmptyState title="Sin resultados" description="No se encontraron tests con estos filtros." />
             ) : null}
 
             <View className="gap-4">
               {filtered.map((workout) => {
-                const typeHint = workout.wod_type?.toLowerCase() ?? "";
-                const tone: keyof typeof statTone = typeHint.includes("strength")
-                  ? "strength"
-                  : typeHint.includes("cardio")
-                    ? "cardio"
-                    : "hybrid";
+                const durationMin = workout.avg_time_seconds ? Math.round(workout.avg_time_seconds / 60) : 10;
                 return (
                   <Card key={workout.id} className="bg-slate-900/70">
                     <View className="flex-row justify-between gap-3">
                       <View className="flex-1">
-                        <Text className="text-xs uppercase tracking-[0.2em] text-slate-400">{workout.wod_type}</Text>
+                        <Text className="text-xs uppercase tracking-[0.2em] text-cyan-400">TEST · {durationMin}'</Text>
                         <Text className="text-lg font-semibold text-white">{workout.title}</Text>
                         <Text className="mt-1 text-sm text-slate-300">{workout.description}</Text>
                       </View>
                       <View className="items-end">
-                        <Text className="text-xs text-slate-400">XP: {formatNumber(workout.xp_estimate)}</Text>
                         <Text className="text-xs text-slate-400">
-                          {workout.avg_difficulty ? `${workout.avg_difficulty.toFixed(1)} KP` : "KP: -"}
-                        </Text>
-                        <Text className="text-xs text-slate-400">
-                          {workout.avg_rating ? `${workout.avg_rating.toFixed(1)} *` : "Rating: -"}
+                          {workout.estimated_difficulty ? `Dificultad: ${workout.estimated_difficulty}` : ""}
                         </Text>
                       </View>
                     </View>
                     {renderTags(workout)}
-                    <View className="mt-3 flex-row items-center justify-between">
-                      <Text className="text-xs text-slate-400">Dificultad: {workout.estimated_difficulty ?? "N/A"}</Text>
-                      <Text className={`text-xs font-semibold ${statTone[tone]}`}>{tone.toUpperCase()}</Text>
-                    </View>
-                    <View className="mt-3 flex-row items-center justify-between">
+                    <View className="mt-3 flex-row items-center justify-end">
                       <Pressable onPress={() => router.push(`/workouts/${workout.id}`)}>
                         <Text className="text-sm font-semibold text-cyan-300">Ver detalle</Text>
                       </Pressable>
-                      <Text className="text-xs text-slate-500">
-                        {workout.avg_time_seconds ? `${Math.round(workout.avg_time_seconds / 60)} min` : "Tiempo s/n"}
-                      </Text>
                     </View>
                   </Card>
                 );
@@ -311,7 +301,7 @@ export default function WorkoutsScreen() {
               </Card>
             ) : null}
             {completedFiltered.length === 0 && execStatus === "idle" ? (
-              <EmptyState title="Sin historial" description="No hay workouts completados en este periodo." />
+              <EmptyState title="Sin historial" description="No hay tests realizados en este periodo." />
             ) : null}
 
             <View className="gap-4">
@@ -327,7 +317,7 @@ export default function WorkoutsScreen() {
                       <View className="flex-1">
                         <Text className="text-xs uppercase tracking-[0.2em] text-slate-400">Completado</Text>
                         <Text className="text-lg font-semibold text-white">
-                          {execution.workout?.title ?? "Workout"}
+                          {execution.workout?.title ?? "Test"}
                         </Text>
                         <Text className="mt-1 text-xs text-slate-400">{formatDate(execution.executed_at)}</Text>
                       </View>

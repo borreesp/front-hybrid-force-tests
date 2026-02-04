@@ -211,6 +211,10 @@ export type WorkoutResultWithXp = {
   xp_total: number;
   level: number;
   progress_pct: number;
+  test_score?: number | null;
+  capacity_impact?: Record<string, number> | null;
+  insights?: Record<string, unknown> | null;
+  milestones?: Record<string, unknown>[] | null;
 };
 
 export type CapacityProfileItem = {
@@ -219,6 +223,8 @@ export type CapacityProfileItem = {
   capacity_code: string;
   capacity_name?: string | null;
   value: number;
+  rawScore?: number | null;
+  percent?: number | null;
   measured_at: string;
 };
 
@@ -300,6 +306,10 @@ export type TestsSummary = {
 export type AthleteCapacity = {
   capacity: string;
   value: number;
+  code?: string | null;
+  name?: string | null;
+  rawScore?: number | null;
+  percent?: number | null;
   measured_at: string;
 };
 

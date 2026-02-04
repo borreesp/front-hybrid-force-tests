@@ -32,15 +32,11 @@ export const tabRoutes = {
   },
   workouts: {
     name: "workouts",
-    title: "Workouts",
+    title: "Tests",
   },
   ranking: {
     name: "ranking",
     title: "Ranking",
-  },
-  athlete: {
-    name: "athlete",
-    title: "Atleta",
   },
   profile: {
     name: "profile",

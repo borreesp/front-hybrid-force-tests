@@ -39,7 +39,7 @@ export default function TabsLayout() {
             name={tabRoutes.workouts.name}
             options={{
               title: tabRoutes.workouts.title,
-              tabBarIcon: createTabBarIcon.workouts(),
+              tabBarIcon: createTabBarIcon.tests(),
             }}
           />
           <Tabs.Screen
@@ -50,18 +50,15 @@ export default function TabsLayout() {
             }}
           />
           <Tabs.Screen
-            name={tabRoutes.athlete.name}
-            options={{
-              title: tabRoutes.athlete.title,
-              tabBarIcon: createTabBarIcon.athlete(),
-            }}
-          />
-          <Tabs.Screen
             name={tabRoutes.profile.name}
             options={{
               title: tabRoutes.profile.title,
               tabBarIcon: createTabBarIcon.profile(userInfo),
             }}
+          />
+          <Tabs.Screen
+            name="athlete"
+            options={{ href: null }}
           />
           <Tabs.Screen
             name={tabRoutes.me.name}

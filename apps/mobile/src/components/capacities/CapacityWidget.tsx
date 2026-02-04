@@ -74,7 +74,7 @@ const BarsSection: React.FC<{
   showRawScore?: boolean;
 }> = ({ items, showRawScore = false }) => {
   if (items.length === 0) {
-    return <EmptyState title="Sin datos" description="Analiza o aplica un WOD para ver capacidades." />;
+    return <EmptyState title="Sin datos" description="Aplica un test para ver tus capacidades." />;
   }
 
   return (
@@ -112,7 +112,7 @@ const DashboardBarsSection: React.FC<{
   items: CapacityDisplayItem[];
 }> = ({ items }) => {
   if (items.length === 0) {
-    return <EmptyState title="Sin datos aun" description="Analiza o aplica un WOD para ver capacidades." />;
+    return <EmptyState title="Sin datos aun" description="Aplica un test para ver tus capacidades." />;
   }
 
   return (

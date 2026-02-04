@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { ScrollView, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Card, Section } from "@thrifty/ui";
 import { api } from "../core/api";
 import type { AthleteProfileResponse, AthletePrStat, WorkoutExecution } from "../core/types";
@@ -21,6 +21,9 @@ type QuickMetrics = {
   topCapacity?: { name: string; value: number };
 };
 
+const CAPACITY_PREVIEW_LIMIT = 6;
+const CAPACITY_ALL_LIMIT = Number.MAX_SAFE_INTEGER;
+
 export default function AthleteHomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -29,6 +32,7 @@ export default function AthleteHomeScreen() {
   const [topPrs, setTopPrs] = useState<AthletePrStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [capacitiesExpanded, setCapacitiesExpanded] = useState(false);
 
   const {
     items: capacityItems,
@@ -36,13 +40,16 @@ export default function AthleteHomeScreen() {
     setMode: setCapacityMode,
     isLoading: capacitiesLoading,
     error: capacitiesError,
-  } = useCapacities({ maxItems: 6, initialMode: "level" });
+    refetch: refetchCapacities,
+  } = useCapacities({ maxItems: CAPACITY_ALL_LIMIT, initialMode: "level" });
 
-  useEffect(() => {
+  const loadProfile = useCallback(() => {
     let mounted = true;
     setLoading(true);
+    setError(null);
     (async () => {
       try {
+        refetchCapacities();
         const profile = await api.getAthleteProfile();
         if (!mounted) return;
         setData(profile);
@@ -60,7 +67,16 @@ export default function AthleteHomeScreen() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [refetchCapacities]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const cleanup = loadProfile();
+      return () => {
+        if (cleanup) cleanup();
+      };
+    }, [loadProfile])
+  );
 
   useEffect(() => {
     if (!user?.id) return;
@@ -108,9 +124,9 @@ export default function AthleteHomeScreen() {
     const out: Suggestion[] = [];
     if (quick.sessions7d === 0) {
       out.push({
-        title: "Registra tu primer test",
-        detail: "Crea un workout tipo test y guarda tu resultado para medir progreso.",
-        cta: "Crear test",
+        title: "Realiza tu primer test",
+        detail: "Aplica un test y registra tu resultado para medir tu progreso.",
+        cta: "Ver tests",
         tone: "emerald",
         href: "/workouts",
       });
@@ -119,8 +135,8 @@ export default function AthleteHomeScreen() {
     if (quick.topCapacity) {
       out.push({
         title: `Enfoca ${quick.topCapacity.name}`,
-        detail: "Disena un test especifico para validar avances en esta capacidad.",
-        cta: "Planificar",
+        detail: "Busca un test especifico para validar avances en esta capacidad.",
+        cta: "Ver tests",
         tone: "cyan",
         href: "/workouts",
       });
@@ -129,8 +145,8 @@ export default function AthleteHomeScreen() {
     if (!out.length) {
       out.push({
         title: "Sin recomendaciones",
-        detail: "Registra un WOD para ver sugerencias personalizadas.",
-        cta: "Ver WODs",
+        detail: "Realiza un test para ver sugerencias personalizadas.",
+        cta: "Ver tests",
         tone: "slate",
         href: "/workouts",
       });
@@ -151,6 +167,14 @@ export default function AthleteHomeScreen() {
       delta: exec.total_time_seconds ? formatTimeSeconds(exec.total_time_seconds) : undefined,
     }));
   }, [executions]);
+
+  const visibleCapacityItems = useMemo(() => {
+    return capacitiesExpanded
+      ? capacityItems
+      : capacityItems.slice(0, CAPACITY_PREVIEW_LIMIT);
+  }, [capacityItems, capacitiesExpanded]);
+
+  const canToggleCapacities = capacityItems.length > CAPACITY_PREVIEW_LIMIT;
 
   const handleNavigate = (href: string) => {
     router.push(href);
@@ -179,13 +203,23 @@ export default function AthleteHomeScreen() {
               mode={capacityMode}
               onModeChange={setCapacityMode}
               showModeSelector
-              items={capacityItems}
+              items={visibleCapacityItems}
               isLoading={capacitiesLoading}
               error={capacitiesError}
               title="Capacidades"
               radarSize={200}
             />
           </Card>
+          {canToggleCapacities ? (
+            <Pressable
+              onPress={() => setCapacitiesExpanded((prev) => !prev)}
+              className="mt-3 items-center"
+            >
+              <Text className="text-xs text-slate-300">
+                {capacitiesExpanded ? "Ver menos" : "Ver mas"}
+              </Text>
+            </Pressable>
+          ) : null}
         </Section>
 
         <MilestonesSection items={milestoneItems} />

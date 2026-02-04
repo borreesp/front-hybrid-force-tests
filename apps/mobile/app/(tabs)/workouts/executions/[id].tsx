@@ -38,8 +38,8 @@ export default function ExecutionDetailScreen() {
   }, [load]);
 
   return (
-    <ScrollView className="px-4 pb-10">
-      <Section title="Ejecucion" description="Detalle del resultado registrado.">
+    <ScrollView className="flex-1 bg-surface px-4 pb-10">
+      <Section title="Resultado" description="Detalle del test realizado.">
         {loading ? (
           <Card>
             <Skeleton height={16} width="70%" className="mb-2" />
@@ -52,7 +52,7 @@ export default function ExecutionDetailScreen() {
 
         {detail && !loading ? (
           <>
-            <Card title={detail.workout?.title ?? `Workout ${detail.workout_id}`}>
+            <Card title={detail.workout?.title ?? `Test #${detail.workout_id}`}>
               <Text className="text-xs text-slate-400 mb-2">Fecha: {formatDate(detail.executed_at)}</Text>
               <Text className="text-base text-white">
                 Tiempo: {formatTimeSeconds(detail.total_time_seconds)}

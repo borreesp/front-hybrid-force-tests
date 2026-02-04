@@ -26,7 +26,7 @@ export const LogoIcon: React.FC<{ color: string; focused: boolean }> = ({ color,
 );
 
 /**
- * Dumbbell icon for Workouts tab
+ * Dumbbell icon for Tests tab
  */
 export const DumbbellIcon: React.FC<{ color: string; size: number }> = ({ color, size }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -106,7 +106,7 @@ export const createTabBarIcon = {
     </IconFrame>
   ),
 
-  workouts: () => (props: TabIconProps) => (
+  tests: () => (props: TabIconProps) => (
     <IconFrame>
       <DumbbellIcon color={props.color} size={props.size || 22} />
     </IconFrame>
