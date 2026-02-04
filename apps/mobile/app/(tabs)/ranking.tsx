@@ -85,7 +85,7 @@ export default function RankingTab() {
 
   return (
     <ScrollView
-      className="px-4 pb-10"
+      className="flex-1 bg-surface px-4 pb-10"
       refreshControl={
         <RefreshControl
           refreshing={status === "loading"}
