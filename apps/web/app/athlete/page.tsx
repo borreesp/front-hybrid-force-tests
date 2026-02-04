@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useMemo, useState } from "react";
 import { AthleteHeader } from "../../components/athlete/AthleteHeader";
 import { AthleteRadar } from "../../components/athlete/AthleteRadar";
@@ -6,18 +6,28 @@ import { ProgressTimeline } from "../../components/athlete/ProgressTimeline";
 import { MetricsPRs } from "../../components/athlete/MetricsPRs";
 import { useAthleteProfile } from "../../hooks/useAthlete";
 import { api } from "../../lib/api";
-import type { AthletePrStat, CapacityProfileItem, WorkoutExecution } from "../../lib/types";
+import type { AthletePrStat, WorkoutExecution } from "../../lib/types";
 import { useAppStore } from "@thrifty/utils";
 import { HelpTooltip } from "../../components/ui/HelpTooltip";
-import { normalizeCapacity, type ComparisonMode, type CapacityKey } from "../../lib/capacityNormalization";
+import {
+  useCapacities,
+  COMPARISON_MODE_OPTIONS,
+  type CapacityComparisonMode
+} from "../../lib/features/capacities";
 
 export default function AthletePage() {
   const { data, loading, error } = useAthleteProfile();
   const [topPrs, setTopPrs] = useState<AthletePrStat[]>([]);
-  const [capacityProfile, setCapacityProfile] = useState<CapacityProfileItem[]>([]);
   const [executions, setExecutions] = useState<WorkoutExecution[]>([]);
-  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>("level");
   const user = useAppStore((s) => s.user);
+
+  // Use unified capacities hook (same logic as mobile)
+  const {
+    items: capacityItems,
+    mode: comparisonMode,
+    setMode: setComparisonMode,
+    isLoading: capacitiesLoading
+  } = useCapacities({ maxItems: 6, initialMode: "level" });
 
   useEffect(() => {
     if (!user?.id) return;
@@ -27,60 +37,20 @@ export default function AthletePage() {
     api.getWorkoutExecutions()
       .then((rows) => setExecutions(rows))
       .catch(() => setExecutions([]));
-    if (!data?.capacities?.length) {
-      const isPrivileged = user?.role === "COACH" || user?.role === "ADMIN";
-      const userIdNum = Number(user.id);
-      const tryIds = [user.id, isPrivileged && userIdNum === 1 ? 2 : undefined].filter(Boolean) as (number | string)[];
-      (async () => {
-        for (const candidate of tryIds) {
-          try {
-            const res = await api.getCapacityProfile(candidate);
-            if (res.capacities?.length) {
-              setCapacityProfile(res.capacities);
-              return;
-            }
-          } catch {
-            // continue
-          }
-        }
-        setCapacityProfile([]);
-      })();
-    }
-  }, [user?.id, data?.capacities?.length]);
+  }, [user?.id]);
 
   const testsSummary = data?.tests;
   const hasResults = (testsSummary?.tests_total ?? 0) > 0;
   const statusLabel: "verde" | "amarillo" | "rojo" = hasResults ? "verde" : "amarillo";
   const statusMessage = hasResults ? "Progreso activo" : "Sin tests registrados aun";
 
-  const athleteLevel = data?.career?.level ?? 1;
-
+  // Convert capacity items to radar entries format
   const radarEntries = useMemo(() => {
-    const map: Record<string, number> = {};
-    const capacitiesSource = (data?.capacities?.length ? data.capacities : capacityProfile) ?? [];
-    capacitiesSource.forEach((c: any) => {
-      const capName = (c?.capacity || c?.name || c?.code || "").toString();
-      if (!capName) return;
-      map[capName.toLowerCase()] = c.value ?? c?.score ?? 0;
-    });
-    const defs: { key: CapacityKey; label: string }[] = [
-      { key: "fuerza", label: "Fuerza" },
-      { key: "resistencia", label: "Resistencia" },
-      { key: "metcon", label: "Metcon" },
-      { key: "gimnasticos", label: "Gimnásticos" },
-      { key: "velocidad", label: "Velocidad" },
-      { key: "carga muscular", label: "Carga muscular" }
-    ];
-    return defs.map((d) => ({
-        label: d.label,
-        value: normalizeCapacity({
-          rawScore: map[d.key] ?? 0,
-          mode: comparisonMode,
-          athleteLevel,
-          capacityKey: d.key
-        })
-      }));
-  }, [athleteLevel, comparisonMode, data?.capacities, capacityProfile]);
+    return capacityItems.map((item) => ({
+      label: item.label,
+      value: item.percent
+    }));
+  }, [capacityItems]);
 
   const modeLabel =
     comparisonMode === "level" ? "tu nivel" : comparisonMode === "global" ? "nivel élite" : "el siguiente nivel";
@@ -164,16 +134,22 @@ export default function AthletePage() {
               Comparar con
               <select
                 value={comparisonMode}
-                onChange={(e) => setComparisonMode(e.target.value as ComparisonMode)}
+                onChange={(e) => setComparisonMode(e.target.value as CapacityComparisonMode)}
                 className="rounded-lg border border-white/10 bg-slate-900/70 px-2 py-1 text-xs text-white"
               >
-                <option value="level">Tu nivel</option>
-                <option value="global">Global</option>
-                <option value="next_level">Nivel siguiente</option>
+                {COMPARISON_MODE_OPTIONS.map((option) => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
           </div>
-          <AthleteRadar entries={radarEntries} caption={data ? `Comparado con ${modeLabel}` : "Esperando datos"} modeLabel={modeLabel} />
+          <AthleteRadar
+            entries={radarEntries}
+            caption={capacitiesLoading ? "Cargando..." : data ? `Comparado con ${modeLabel}` : "Esperando datos"}
+            modeLabel={modeLabel}
+          />
         </div>
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm text-slate-300">

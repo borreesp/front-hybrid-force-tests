@@ -1,3 +1,3 @@
-import DashboardScreen from "../../src/screens/DashboardScreen";
+import AthleteHomeScreen from "../../src/screens/AthleteHomeScreen";
 
-export default DashboardScreen;
+export default AthleteHomeScreen;
