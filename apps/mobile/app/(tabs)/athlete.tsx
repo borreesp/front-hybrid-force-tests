@@ -5,34 +5,18 @@ import { api } from "../../src/core/api";
 import type {
   AthleteProfileResponse,
   AthletePrStat,
-  CapacityProfileItem,
   WorkoutExecution
 } from "../../src/core/types";
 import { useAuth } from "../../src/hooks/useAuth";
 import { Avatar } from "../../src/components/Avatar";
 import { EmptyState, ErrorState } from "../../src/components/State";
 import { Skeleton } from "../../src/components/Skeleton";
+import { CapacityWidget } from "../../src/components/capacities";
 import { formatDate, formatNumber, formatTimeSeconds } from "../../src/utils/format";
 import {
-  normalizeCapacity,
-  type CapacityKey,
-  type ComparisonMode
-} from "../../src/lib/capacityNormalization";
-
-const compareOptions: { key: ComparisonMode; label: string }[] = [
-  { key: "level", label: "Tu nivel" },
-  { key: "global", label: "Global" },
-  { key: "next_level", label: "Nivel siguiente" }
-];
-
-const capacityDefs: { key: CapacityKey; label: string }[] = [
-  { key: "fuerza", label: "Fuerza" },
-  { key: "resistencia", label: "Resistencia" },
-  { key: "metcon", label: "Metcon" },
-  { key: "gimnasticos", label: "Gimnasticos" },
-  { key: "velocidad", label: "Velocidad" },
-  { key: "carga muscular", label: "Carga muscular" }
-];
+  useCapacities,
+  COMPARISON_MODE_OPTIONS
+} from "../../src/features/capacities";
 
 const normalizeLabel = (value?: string | null) => (value || "").toLowerCase();
 
@@ -69,10 +53,17 @@ export default function AthleteScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [topPrs, setTopPrs] = useState<AthletePrStat[]>([]);
-  const [capacityProfile, setCapacityProfile] = useState<CapacityProfileItem[]>([]);
   const [executions, setExecutions] = useState<WorkoutExecution[]>([]);
-  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>("level");
   const [showAllPrs, setShowAllPrs] = useState(false);
+
+  // Use unified capacities hook
+  const {
+    items: capacityItems,
+    mode: capacityMode,
+    setMode: setCapacityMode,
+    isLoading: capacitiesLoading,
+    error: capacitiesError
+  } = useCapacities({ maxItems: 6, initialMode: "level" });
 
   useEffect(() => {
     let mounted = true;
@@ -108,55 +99,10 @@ export default function AthleteScreen() {
       .catch(() => setExecutions([]));
   }, [user?.id]);
 
-  useEffect(() => {
-    if (!user?.id) return;
-    if (data?.capacities?.length) return;
-    const isPrivileged = user?.role === "COACH" || user?.role === "ADMIN";
-    const userIdNum = Number(user.id);
-    const tryIds = [user.id, isPrivileged && userIdNum === 1 ? 2 : undefined].filter(Boolean) as (
-      | number
-      | string
-    )[];
-    (async () => {
-      for (const candidate of tryIds) {
-        try {
-          const res = await api.getCapacityProfile(candidate);
-          if (res.capacities?.length) {
-            setCapacityProfile(res.capacities);
-            return;
-          }
-        } catch {
-          // continue
-        }
-      }
-      setCapacityProfile([]);
-    })();
-  }, [data?.capacities?.length, user?.id, user?.role]);
-
   const testsSummary = data?.tests;
   const hasResults = (testsSummary?.tests_total ?? 0) > 0;
   const statusTone = hasResults ? "emerald" : "amber";
   const statusMessage = hasResults ? "Progreso activo" : "Sin tests registrados";
-  const athleteLevel = data?.career?.level ?? 1;
-
-  const radarEntries = useMemo(() => {
-    const map: Record<string, number> = {};
-    const capacitiesSource = (data?.capacities?.length ? data.capacities : capacityProfile) ?? [];
-    capacitiesSource.forEach((c: any) => {
-      const capName = (c?.capacity || c?.name || c?.code || "").toString();
-      if (!capName) return;
-      map[capName.toLowerCase()] = c.value ?? c?.score ?? 0;
-    });
-    return capacityDefs.map((d) => ({
-      label: d.label,
-      value: normalizeCapacity({
-        rawScore: map[d.key] ?? 0,
-        mode: comparisonMode,
-        athleteLevel,
-        capacityKey: d.key
-      })
-    }));
-  }, [athleteLevel, comparisonMode, data?.capacities, capacityProfile]);
 
   const metrics = useMemo(() => {
     const xpTotal = data?.career?.xp_total ?? 0;
@@ -253,13 +199,15 @@ export default function AthleteScreen() {
           </Card>
         ) : null}
 
+        {/* Unified Capacity Widget */}
         <Section title="Radar de capacidades" description="Comparado con tu referencia.">
-          <View className="flex-row flex-wrap gap-2">
-            {compareOptions.map((option) => (
-              <Pressable key={option.key} onPress={() => setComparisonMode(option.key)}>
+          {/* Mode selector */}
+          <View className="flex-row flex-wrap gap-2 mb-2">
+            {COMPARISON_MODE_OPTIONS.map((option) => (
+              <Pressable key={option.key} onPress={() => setCapacityMode(option.key)}>
                 <Text
                   className={`rounded-full border px-3 py-1 text-xs ${
-                    comparisonMode === option.key
+                    capacityMode === option.key
                       ? "border-cyan-400/60 bg-cyan-500/20 text-white"
                       : "border-white/10 bg-slate-900/60 text-slate-300"
                   }`}
@@ -269,20 +217,15 @@ export default function AthleteScreen() {
               </Pressable>
             ))}
           </View>
+
           <Card className="bg-slate-900/70">
-            <View className="gap-3">
-              {radarEntries.map((entry) => (
-                <View key={entry.label} className="rounded-lg bg-white/5 px-3 py-2">
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-sm text-slate-200">{entry.label}</Text>
-                    <Text className="text-xs text-cyan-200">{entry.value}%</Text>
-                  </View>
-                  <View className="mt-2 h-2 w-full rounded-full bg-slate-800">
-                    <View className="h-2 rounded-full bg-cyan-400" style={{ width: `${entry.value}%` }} />
-                  </View>
-                </View>
-              ))}
-            </View>
+            <CapacityWidget
+              variant="bars"
+              mode={capacityMode}
+              items={capacityItems}
+              isLoading={capacitiesLoading}
+              error={capacitiesError}
+            />
           </Card>
         </Section>
 

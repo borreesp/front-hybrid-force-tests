@@ -3,14 +3,14 @@ import { ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Button, Card, Metric, Section } from "@thrifty/ui";
 import { api } from "../core/api";
-import type { AthleteProfileResponse, CapacityProfileItem, WorkoutExecution } from "../core/types";
+import type { AthleteProfileResponse, WorkoutExecution } from "../core/types";
 import { useAuth } from "../hooks/useAuth";
 import { formatDate, formatNumber } from "../utils/format";
 import { EmptyState, ErrorState } from "../components/State";
 import { ListRow } from "../components/ListRow";
 import { CircularProgress } from "../components/CircularProgress";
-import { RadarChart } from "../components/RadarChart";
-import { ProgressBar } from "../components/ProgressBar";
+import { CapacityWidget } from "../components/capacities";
+import { useCapacities, getTopCapacity } from "../features/capacities";
 
 const quickActions = [
   { label: "Historial", hint: "Tus ultimos tests", href: "/workouts", params: { tab: "completed" } },
@@ -38,19 +38,21 @@ const toneStyles: Record<Suggestion["tone"], string> = {
   slate: "border-white/10 bg-slate-800/60"
 };
 
-const palette = ["#5eead4", "#38bdf8", "#a78bfa", "#f472b6", "#facc15", "#22d3ee"];
-
-const getCapacityName = (cap: any) =>
-  cap?.capacity ?? cap?.capacity_name ?? cap?.capacity_code ?? "Capacidad";
-
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [data, setData] = useState<AthleteProfileResponse | null>(null);
-  const [capacityProfile, setCapacityProfile] = useState<CapacityProfileItem[]>([]);
   const [executions, setExecutions] = useState<WorkoutExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Use unified capacities hook (same source of truth as Athlete screen)
+  const {
+    items: capacityItems,
+    mode: capacityMode,
+    isLoading: capacitiesLoading,
+    error: capacitiesError
+  } = useCapacities({ maxItems: 6, initialMode: "level" });
 
   useEffect(() => {
     let mounted = true;
@@ -63,27 +65,6 @@ export default function DashboardScreen() {
           .getWorkoutExecutions()
           .then((rows) => mounted && setExecutions(rows))
           .catch(() => mounted && setExecutions([]));
-        if (user) {
-          if (!profile.capacities?.length) {
-            const isPrivileged = user?.role === "COACH" || user?.role === "ADMIN";
-            const userIdNum = Number(user.id);
-            const tryIds = [user.id, isPrivileged && userIdNum === 1 ? 2 : undefined].filter(Boolean) as (
-              | number
-              | string
-            )[];
-            for (const candidate of tryIds) {
-              try {
-                const res = await api.getCapacityProfile(candidate);
-                if (mounted && res.capacities?.length) {
-                  setCapacityProfile(res.capacities);
-                  break;
-                }
-              } catch {
-                // continue
-              }
-            }
-          }
-        }
       } catch {
         if (!mounted) return;
         setError("No se pudieron cargar los datos del atleta.");
@@ -98,6 +79,9 @@ export default function DashboardScreen() {
 
   const hintCareer = data?.career?.updated_at ? `Actualizado: ${formatDate(data.career.updated_at)}` : "Sin datos";
 
+  // Get top capacity from unified hook data
+  const topCapacityItem = useMemo(() => getTopCapacity(capacityItems), [capacityItems]);
+
   const quick: QuickMetrics = useMemo(() => {
     if (!data) {
       return {
@@ -109,39 +93,16 @@ export default function DashboardScreen() {
 
     const testsSummary = data.tests;
     const sessions7d = testsSummary?.tests_7d ?? 0;
-    const capsSource = data.capacities?.length ? data.capacities : capacityProfile;
-    const topCapacity =
-      capsSource && capsSource.length > 0
-        ? capsSource.reduce<{ name: string; value: number } | undefined>((prev, curr) => {
-            if (!prev || curr.value > prev.value) {
-              return { name: getCapacityName(curr), value: curr.value };
-            }
-            return prev;
-          }, undefined)
-        : undefined;
 
     return {
       xp: data.career?.xp_total ?? 0,
       sessions7d,
       testsTotal: testsSummary?.tests_total ?? 0,
-      topCapacity
+      topCapacity: topCapacityItem
+        ? { name: topCapacityItem.label, value: topCapacityItem.rawScore }
+        : undefined
     };
-  }, [data, capacityProfile]);
-
-  const capacitySegments = useMemo(() => {
-    const caps = (data?.capacities?.length ? data.capacities : capacityProfile || []).slice(0, 6);
-    const total = caps.reduce((acc, c) => acc + (c.value || 0), 0) || 1;
-    return caps.map((cap, idx) => {
-      const value = cap.value ?? 0;
-      const pct = Math.max(0, Math.round((value / total) * 100));
-      return {
-        label: getCapacityName(cap),
-        value,
-        pct,
-        color: palette[idx % palette.length]
-      };
-    });
-  }, [data, capacityProfile]);
+  }, [data, topCapacityItem]);
 
   const suggestions: Suggestion[] = useMemo(() => {
     const out: Suggestion[] = [];
@@ -253,46 +214,23 @@ export default function DashboardScreen() {
           </View>
         </Card>
 
+        {/* Unified Capacity Widget - Same data as Athlete screen */}
         <Card className="bg-slate-900/80">
-          <Text className="text-sm font-medium text-slate-400">Capacidades</Text>
-
-          {/* Radar Chart Visualization - Mobile optimizado */}
-          {capacitySegments.length >= 3 && (
-            <View className="items-center my-3">
-              <RadarChart
-                data={capacitySegments.map((seg) => ({
-                  label: seg.label,
-                  value: seg.value
-                }))}
-                size={200}
-                color="#22d3ee"
-                maxValue={100}
-              />
-            </View>
-          )}
-
-          {/* Progress Bars */}
-          <View className="mt-3 gap-3">
-            {capacitySegments.length ? (
-              capacitySegments.map((seg) => (
-                <ProgressBar
-                  key={seg.label}
-                  value={seg.pct}
-                  label={seg.label}
-                  color={seg.color}
-                  showPercentage
-                />
-              ))
-            ) : (
-              <EmptyState title="Sin datos aun" description="Analiza o aplica un WOD para ver capacidades." />
-            )}
-          </View>
+          <CapacityWidget
+            variant="both"
+            mode={capacityMode}
+            items={capacityItems}
+            isLoading={capacitiesLoading}
+            error={capacitiesError}
+            title="Capacidades"
+            radarSize={200}
+          />
         </Card>
 
         <Card className="bg-slate-900/80">
           <Text className="text-sm font-medium text-slate-400">Progreso</Text>
 
-          {/* Circular Progress for Level/XP - Mobile optimizado */}
+          {/* Circular Progress for Level/XP */}
           <View className="items-center justify-center py-4">
             <CircularProgress
               value={data?.career?.progress_pct ?? 0}
@@ -355,3 +293,50 @@ export default function DashboardScreen() {
     </ScrollView>
   );
 }
+
+/*
+ * NOTA: Toggle para usar el widget unificado o la UI anterior
+ * ============================================================
+ *
+ * OPCIÓN 1 (ACTUAL): Dashboard usa CapacityWidget con variant="both"
+ * - Muestra radar + barras con porcentajes NORMALIZADOS (mismo que Athlete)
+ * - Los valores son consistentes entre Dashboard y Athlete
+ *
+ * OPCIÓN 2: Dashboard mantiene UI anterior pero con % normalizado
+ * - Descomenta el código comentado abajo y comenta el CapacityWidget actual
+ * - Usa RadarChart y ProgressBar directamente pero con capacityItems del hook
+ *
+ * Para cambiar a Opción 2, reemplaza el Card de "Capacidades" por:
+ *
+ * <Card className="bg-slate-900/80">
+ *   <Text className="text-sm font-medium text-slate-400">Capacidades</Text>
+ *   {capacityItems.length >= 3 && (
+ *     <View className="items-center my-3">
+ *       <RadarChart
+ *         data={capacityItems.map((item) => ({
+ *           label: item.label,
+ *           value: item.percent  // <-- Ahora usa percent normalizado
+ *         }))}
+ *         size={200}
+ *         color="#22d3ee"
+ *         maxValue={100}
+ *       />
+ *     </View>
+ *   )}
+ *   <View className="mt-3 gap-3">
+ *     {capacityItems.length ? (
+ *       capacityItems.map((item) => (
+ *         <ProgressBar
+ *           key={item.key}
+ *           value={item.percent}  // <-- Ahora usa percent normalizado
+ *           label={item.label}
+ *           color={item.color}
+ *           showPercentage
+ *         />
+ *       ))
+ *     ) : (
+ *       <EmptyState title="Sin datos aun" description="Analiza o aplica un WOD para ver capacidades." />
+ *     )}
+ *   </View>
+ * </Card>
+ */
